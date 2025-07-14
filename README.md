@@ -7,14 +7,14 @@ Yume is a long-term project that aims to create an interactive, realistic, and d
 
 
 <p align="center">
-    🤗 <a href="https://huggingface.co/FastVideo/FastHunyuan"  target="_blank">YUME</a>  | 📜 <a href="https://huggingface.co/FastVideo/FastMochi-diffusers" target="_blank">Paper</a> 
+    🤗 <a href="https://github.com/stdstu12/YUME-World"  target="_blank">YUME</a>  | 📜 <a href="https://github.com/stdstu12/YUME-World" target="_blank">Paper</a> 
 </p> 
 
 
 Yume currently offers: (with more to come)
 
 
-- A distillation recipes for video DiT, based on [OSV](https://arxiv.org/abs/2409.11367).
+- A distillation recipes for video DiT.
 - [FramePack-based](https://github.com/lllyasviel/FramePack) training code.
 - Long video generation method with DDP sampling support
 
