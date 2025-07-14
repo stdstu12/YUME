@@ -30,13 +30,17 @@ def getdataset(args):
     tokenizer = AutoTokenizer.from_pretrained(args.text_encoder_name,
                                               cache_dir=args.cache_dir)
     if args.dataset == "t2v":
-        return T2V_dataset(
-            args,
-            transform=transform,
-            temporal_sample=temporal_sample,
-            tokenizer=tokenizer,
-            transform_topcrop=transform_topcrop,
+        return StableVideoAnimationDataset(
+            height = args.max_height,
+            width=  args.max_width
         )
+        # return T2V_dataset(
+        #     args,
+        #     transform=transform,
+        #     temporal_sample=temporal_sample,
+        #     tokenizer=tokenizer,
+        #     transform_topcrop=transform_topcrop,
+        # )
 
     raise NotImplementedError(args.dataset)
 

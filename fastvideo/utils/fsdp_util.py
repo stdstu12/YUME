@@ -69,6 +69,7 @@ def get_dit_fsdp_kwargs(
     use_lora=False,
     cpu_offload=False,
     master_weight_type="fp32",
+    rank=None,
 ):
     no_split_modules = get_no_split_modules(transformer)
     if use_lora:
@@ -92,7 +93,7 @@ def get_dit_fsdp_kwargs(
     elif sharding_strategy == "hybrid_zero2":
         sharding_strategy = ShardingStrategy._HYBRID_SHARD_ZERO2
 
-    device_id = torch.cuda.current_device()
+    device_id = rank #torch.cuda.current_device()
     cpu_offload = (torch.distributed.fsdp.CPUOffload(
         offload_params=True) if cpu_offload else None)
     fsdp_kwargs = {
@@ -113,6 +114,7 @@ def get_dit_fsdp_kwargs(
 
     return fsdp_kwargs, no_split_modules
 
+from torch.distributed.fsdp.wrap import size_based_auto_wrap_policy
 
 def get_discriminator_fsdp_kwargs(master_weight_type="fp32"):
     auto_wrap_policy = None
@@ -121,6 +123,28 @@ def get_discriminator_fsdp_kwargs(master_weight_type="fp32"):
 
     mixed_precision = get_mixed_precision(master_weight_type)
     sharding_strategy = ShardingStrategy.NO_SHARD
+    device_id = torch.cuda.current_device()
+    fsdp_kwargs = {
+        "auto_wrap_policy": auto_wrap_policy,
+        "mixed_precision": mixed_precision,
+        "sharding_strategy": sharding_strategy,
+        "device_id": device_id,
+        "limit_all_gathers": True,
+    }
+
+    return fsdp_kwargs
+
+def get_DINO_fsdp_kwargs(master_weight_type="bf16"):
+    auto_wrap_policy = fsdp_auto_wrap_policy #None
+    # 使用基于大小的自动包装策略
+    auto_wrap_policy = partial(
+        size_based_auto_wrap_policy,
+        min_num_params=100_000_000  # 设置适当的大小阈值
+    )
+    # Use existing mixed precision settings
+
+    mixed_precision = get_mixed_precision(master_weight_type)
+    sharding_strategy = ShardingStrategy.FULL_SHARD #ShardingStrategy.FULL_SHARD
     device_id = torch.cuda.current_device()
     fsdp_kwargs = {
         "auto_wrap_policy": auto_wrap_policy,

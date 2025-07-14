@@ -6,9 +6,12 @@ import torch.nn.functional as F
 from diffusers import AutoencoderKLHunyuanVideo, AutoencoderKLMochi
 from torch import nn
 from transformers import AutoTokenizer, T5EncoderModel
+from collections import OrderedDict
+# from fastvideo.models.hunyuan.modules.models import (
+#     HYVideoDiffusionTransformer, MMDoubleStreamBlock, MMSingleStreamBlock)
 
-from fastvideo.models.hunyuan.modules.models import (
-    HYVideoDiffusionTransformer, MMDoubleStreamBlock, MMSingleStreamBlock)
+from wan.modules.model import(WanModel, WanAttentionBlock)
+
 from fastvideo.models.hunyuan.text_encoder import TextEncoder
 from fastvideo.models.hunyuan.vae.autoencoder_kl_causal_3d import \
     AutoencoderKLCausal3D
@@ -18,6 +21,9 @@ from fastvideo.models.hunyuan_hf.modeling_hunyuan import (
 from fastvideo.models.mochi_hf.modeling_mochi import (MochiTransformer3DModel,
                                                       MochiTransformerBlock)
 from fastvideo.utils.logging_ import main_print
+
+from hyvideo.modules.models import (
+    HYVideoDiffusionTransformer, MMDoubleStreamBlock, MMSingleStreamBlock)
 
 hunyuan_config = {
     "mm_double_blocks_depth": 20,
@@ -74,9 +80,12 @@ class HunyuanTextEncoderWrapper(nn.Module):
         prompt_template_video = PROMPT_TEMPLATE["dit-llm-encode-video"]
         text_encoder_path = os.path.join(pretrained_model_name_or_path,
                                          "text_encoder")
+        tokenizer_path = os.path.join(pretrained_model_name_or_path,
+                                         "tokenizer")
         self.text_encoder = TextEncoder(
             text_encoder_type="llm",
             text_encoder_path=text_encoder_path,
+            tokenizer_path=tokenizer_path,
             max_length=max_length,
             text_encoder_precision="fp16",
             tokenizer_type="llm",
@@ -90,9 +99,12 @@ class HunyuanTextEncoderWrapper(nn.Module):
         )
         text_encoder_path_2 = os.path.join(pretrained_model_name_or_path,
                                            "text_encoder_2")
+        tokenizer_path_2 = os.path.join(pretrained_model_name_or_path,
+                                         "tokenizer_2")
         self.text_encoder_2 = TextEncoder(
             text_encoder_type="clipL",
             text_encoder_path=text_encoder_path_2,
+            tokenizer_path=tokenizer_path_2,
             max_length=77,
             text_encoder_precision="fp16",
             tokenizer_type="clipL",
@@ -223,6 +235,7 @@ class MochiTextEncoderWrapper(nn.Module):
 
         return prompt_embeds, prompt_attention_mask
 
+import gc
 
 def load_hunyuan_state_dict(model, dit_model_name_or_path):
     load_key = "module"
@@ -243,7 +256,10 @@ def load_hunyuan_state_dict(model, dit_model_name_or_path):
             raise KeyError(
                 f"Missing key: `{load_key}` in the checkpoint: {model_path}. The keys in the checkpoint "
                 f"are: {list(state_dict.keys())}.")
-    model.load_state_dict(state_dict, strict=True)
+    model.load_state_dict(state_dict, strict=False)
+    del state_dict
+    torch.cuda.empty_cache()
+    gc.collect()
     return model
 
 
@@ -294,6 +310,7 @@ def load_transformer(
             transformer = transformer.bfloat16()
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
+    transformer.init_img_in()
     return transformer
 
 
@@ -363,9 +380,171 @@ def get_no_split_modules(transformer):
                 HunyuanVideoTransformerBlock)
     elif isinstance(transformer, HYVideoDiffusionTransformer):
         return (MMDoubleStreamBlock, MMSingleStreamBlock)
+    elif isinstance(transformer, WanModel):
+        return (WanAttentionBlock, )
     else:
         raise ValueError(f"Unsupported transformer type: {type(transformer)}")
 
+import copy
+def load_hunyuan_state_dict_small(model, teacher_model, dit_model_name_or_path,source_idx_double,source_idx_single):
+    load_key = "module"
+    model_path = dit_model_name_or_path
+    bare_model = "unknown"
+
+    state_dict = torch.load(model_path,
+                            map_location=lambda storage, loc: storage,
+                            weights_only=True)
+
+    if bare_model == "unknown" and ("ema" in state_dict
+                                    or "module" in state_dict):
+        bare_model = False
+    if bare_model is False:
+        if load_key in state_dict:
+            state_dict = state_dict[load_key]
+        else:
+            raise KeyError(
+                f"Missing key: `{load_key}` in the checkpoint: {model_path}. The keys in the checkpoint "
+                f"are: {list(state_dict.keys())}.")
+    
+    teacher_model.load_state_dict(state_dict, strict=True)
+    new_weights = OrderedDict()
+    for k, v in state_dict.items():
+        if 'double_blocks' in k or 'single_blocks' in k:
+            checklist = source_idx_double if 'double_blocks' in k else source_idx_single
+            k_ls = k.split('.')
+            idx = int(k_ls[1])
+            #print(checklist,"SSSSSSSSSSSSSSSSSSSS")
+            if idx in checklist:
+                #k_ls[1] = str(cnt)
+                k_ls[1] = str(checklist.index(idx))
+                new_k = '.'.join(k_ls)
+                new_weights[new_k] = v
+        else:
+            new_weights[k] = v
+    model.load_state_dict(new_weights, strict=True)
+    del state_dict
+    del new_weights
+    torch.cuda.empty_cache()
+    torch.cuda.empty_cache()
+    gc.collect()
+    gc.collect()
+    return teacher_model, model
+        
+def load_transformer_small(
+    model_type,
+    dit_model_name_or_path,
+    pretrained_model_name_or_path,
+    master_weight_type,
+    source_idx_double,
+    source_idx_single,
+):
+    # hunyuan_config = {
+    #     "mm_double_blocks_depth": 20,
+    #     "mm_single_blocks_depth": 40,
+    #     "rope_dim_list": [16, 56, 56],
+    #     "hidden_size": 3072,
+    #     "heads_num": 24,
+    #     "mlp_width_ratio": 4,
+    #     "guidance_embed": True,
+    # }
+    teacher_transformer = HYVideoDiffusionTransformer(
+            in_channels=16,
+            out_channels=16,
+            **hunyuan_config,
+            dtype=master_weight_type,
+    )
+    hunyuan_config["mm_double_blocks_depth"] = len(source_idx_double)
+    hunyuan_config["mm_single_blocks_depth"] = len(source_idx_single)
+    transformer = HYVideoDiffusionTransformer(
+            in_channels=16,
+            out_channels=16,
+            **hunyuan_config,
+            dtype=master_weight_type,
+    )
+
+    teacher_transformer, transformer = load_hunyuan_state_dict_small(transformer,teacher_transformer,
+                                              dit_model_name_or_path,source_idx_double,source_idx_single)
+    if master_weight_type == torch.bfloat16:
+        transformer = transformer.bfloat16()
+        teacher_transformer = teacher_transformer.bfloat16()
+    return teacher_transformer,transformer
+
+
+
+def load_hunyuan_state_dict_small_sample(model, dit_model_name_or_path,source_idx_double,source_idx_single):
+    load_key = "module"
+    model_path = dit_model_name_or_path
+    bare_model = "unknown"
+
+    state_dict = torch.load(model_path,
+                            map_location=lambda storage, loc: storage,
+                            weights_only=True)
+
+    if bare_model == "unknown" and ("ema" in state_dict
+                                    or "module" in state_dict):
+        bare_model = False
+    if bare_model is False:
+        if load_key in state_dict:
+            state_dict = state_dict[load_key]
+        else:
+            raise KeyError(
+                f"Missing key: `{load_key}` in the checkpoint: {model_path}. The keys in the checkpoint "
+                f"are: {list(state_dict.keys())}.")
+    
+
+    new_weights = OrderedDict()
+    for k, v in state_dict.items():
+        if 'double_blocks' in k or 'single_blocks' in k:
+            checklist = source_idx_double if 'double_blocks' in k else source_idx_single
+            k_ls = k.split('.')
+            idx = int(k_ls[1])
+            #print(checklist,"SSSSSSSSSSSSSSSSSSSS")
+            if idx in checklist:
+                #k_ls[1] = str(cnt)
+                k_ls[1] = str(checklist.index(idx))
+                new_k = '.'.join(k_ls)
+                new_weights[new_k] = v
+        else:
+            new_weights[k] = v
+    model.load_state_dict(new_weights, strict=True)
+    del state_dict
+    del new_weights
+    torch.cuda.empty_cache()
+    gc.collect()
+    return model
+
+def load_transformer_small_sample(
+    model_type,
+    dit_model_name_or_path,
+    pretrained_model_name_or_path,
+    master_weight_type,
+    source_idx_double,
+    source_idx_single,
+):
+    # hunyuan_config = {
+    #     "mm_double_blocks_depth": 20,
+    #     "mm_single_blocks_depth": 40,
+    #     "rope_dim_list": [16, 56, 56],
+    #     "hidden_size": 3072,
+    #     "heads_num": 24,
+    #     "mlp_width_ratio": 4,
+    #     "guidance_embed": True,
+    # }
+
+    hunyuan_config["mm_double_blocks_depth"] = len(source_idx_double)
+    hunyuan_config["mm_single_blocks_depth"] = len(source_idx_single)
+    transformer = HYVideoDiffusionTransformer(
+            in_channels=16,
+            out_channels=16,
+            **hunyuan_config,
+            dtype=master_weight_type,
+    )
+
+    transformer = load_hunyuan_state_dict_small_sample(transformer,
+                                              dit_model_name_or_path,source_idx_double,source_idx_single)
+    if master_weight_type == torch.bfloat16:
+        transformer = transformer.bfloat16()
+    return transformer
 
 if __name__ == "__main__":
     # test encode prompt

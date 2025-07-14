@@ -11,15 +11,41 @@ from diffusers.video_processor import VideoProcessor
 from einops import rearrange
 from tqdm import tqdm
 
-import wandb
 from fastvideo.distill.solver import PCMFMScheduler
 from fastvideo.models.mochi_hf.pipeline_mochi import (
     linear_quadratic_schedule, retrieve_timesteps)
 from fastvideo.utils.communications import all_gather
-from fastvideo.utils.load import load_vae
+from fastvideo.utils.load import load_vae 
 from fastvideo.utils.parallel_states import (get_sequence_parallel_state,
                                              nccl_info)
+import imageio
+from einops import rearrange
+from diffusers.utils import load_image
 
+def save_videos_grid(videos: torch.Tensor, path: str, rescale=False, n_rows=1, fps=24):
+    """save videos by video tensor
+       copy from https://github.com/guoyww/AnimateDiff/blob/e92bd5671ba62c0d774a32951453e328018b7c5b/animatediff/utils/util.py#L61
+
+    Args:
+        videos (torch.Tensor): video tensor predicted by the model
+        path (str): path to save video
+        rescale (bool, optional): rescale the video tensor from [-1, 1] to  . Defaults to False.
+        n_rows (int, optional): Defaults to 1.
+        fps (int, optional): video save fps. Defaults to 8.
+    """
+    videos = rearrange(videos, "b c t h w -> t b c h w")
+    outputs = []
+    for x in videos:
+        x = torchvision.utils.make_grid(x, nrow=n_rows)
+        x = x.transpose(0, 1).transpose(1, 2).squeeze(-1)
+        if rescale:
+            x = (x + 1.0) / 2.0  # -1,1 -> 0,1
+        x = torch.clamp(x, 0, 1)
+        x = (x * 255).numpy().astype(np.uint8)
+        outputs.append(x)
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    imageio.mimsave(path, outputs, fps=fps)
 
 def prepare_latents(
     batch_size,
@@ -68,11 +94,12 @@ def sample_validation_video(
     vae_spatial_scale_factor=8,
     vae_temporal_scale_factor=6,
     num_channels_latents=12,
+    prompt_embeds_2=None,
+    negative_prompt_embeds_2=None,
 ):
     device = vae.device
 
     batch_size = prompt_embeds.shape[0]
-
     do_classifier_free_guidance = guidance_scale > 1.0
     if do_classifier_free_guidance:
         prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds],
@@ -80,6 +107,8 @@ def sample_validation_video(
         prompt_attention_mask = torch.cat(
             [negative_prompt_attention_mask, prompt_attention_mask], dim=0)
 
+        #prompt_embeds_2 = torch.cat(
+        #    [negative_prompt_embeds_2, prompt_embeds_2], dim=0) 
     # 4. Prepare latent variables
     # TODO: Remove hardcore
     latents = prepare_latents(
@@ -127,7 +156,33 @@ def sample_validation_video(
     # with self.progress_bar(total=num_inference_steps) as progress_bar:
     # write with tqdm instead
     # only enable if nccl_info.global_rank == 0
-
+    #print("jjjjjjjjjjjjjjjjjj")
+    video_processor = VideoProcessor(
+            vae_scale_factor=vae_spatial_scale_factor)    
+    
+    initial_image = load_image("/inspire/hdd/ws-f4d69b29-e0a5-44e6-bd92-acf4de9990f0/public-project/zhangkaipeng-24043/hunyuanvideo/FastVideo_img/flux-dev1.png")
+    initial_image = video_processor.preprocess(initial_image, height=height, width=width).to(
+                device, dtype=prompt_embeds.dtype
+            )
+    initial_image = initial_image.unsqueeze(2)
+    image_latents = vae.encode(initial_image.to(vae.dtype)).latent_dist.sample()
+    # if hasattr(vae.config, "shift_factor") and vae.config.shift_factor:
+    #     image_latents = (image_latents - vae.config.shift_factor) * vae.config.scaling_factor
+    # else:
+    #     image_latents = image_latents * vae.config.scaling_factor
+    batch_size = 1
+    num_channels_latents = 16
+    video_length =  (num_frames - 1) // vae_temporal_scale_factor + 1 
+    padding_shape = (
+        batch_size,
+        num_channels_latents,
+        video_length - 1,
+        int(height) // vae_spatial_scale_factor,
+        int(width) // vae_spatial_scale_factor,
+    )
+    latent_padding = torch.zeros(padding_shape, device=device, dtype=vae.dtype)
+    image_latents = torch.cat([image_latents, latent_padding], dim=2)
+    
     with tqdm(
             total=num_inference_steps,
             disable=nccl_info.rank_within_group != 0,
@@ -136,8 +191,14 @@ def sample_validation_video(
         for i, t in enumerate(timesteps):
             latent_model_input = (torch.cat([latents] * 2)
                                   if do_classifier_free_guidance else latents)
+            #print(latent_model_input.shape,image_latents.shape)
+            latent_model_input = torch.cat([latent_model_input, image_latents], dim=1)
             # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
             timestep = t.expand(latent_model_input.shape[0])
+            # guidance=torch.tensor(
+            #         [1000.0],
+            #         device=latent_model_input.device,
+            #         dtype=torch.bfloat16)
             with torch.autocast("cuda", dtype=torch.bfloat16):
                 noise_pred = transformer(
                     hidden_states=latent_model_input,
@@ -145,7 +206,9 @@ def sample_validation_video(
                     timestep=timestep,
                     encoder_attention_mask=prompt_attention_mask,
                     return_dict=False,
+                    #guidance=guidance,
                 )[0]
+            #print(noise_pred.shape,"ssssssssssssssss")
 
             # Mochi CFG + Sampling runs in FP32
             noise_pred = noise_pred.to(torch.float32)
@@ -193,8 +256,7 @@ def sample_validation_video(
             latents = latents / vae.config.scaling_factor
         with torch.autocast("cuda", dtype=vae.dtype):
             video = vae.decode(latents, return_dict=False)[0]
-        video_processor = VideoProcessor(
-            vae_scale_factor=vae_spatial_scale_factor)
+
         video = video_processor.postprocess_video(video,
                                                   output_type=output_type)
 
@@ -215,6 +277,10 @@ def log_validation(
     linear_quadratic_threshold=0.025,
     linear_range=0.5,
     ema=False,
+    loader_val=None,
+    vae=None,
+    text_encoder=None,
+    fps=None,
 ):
     # TODO
     print("Running validation....\n")
@@ -228,9 +294,6 @@ def log_validation(
         num_channels_latents = 16
     else:
         raise ValueError(f"Model type {args.model_type} not supported")
-    vae, autocast_type, fps = load_vae(args.model_type,
-                                       args.pretrained_model_name_or_path)
-    vae.enable_tiling()
     if scheduler_type == "euler":
         scheduler = FlowMatchEulerDiscreteScheduler(shift=shift)
     else:
@@ -244,102 +307,96 @@ def log_validation(
             linear_range,
         )
     # args.validation_prompt_dir
-
-    validation_guidance_scale_ls = args.validation_guidance_scale.split(",")
-    validation_guidance_scale_ls = [
-        float(scale) for scale in validation_guidance_scale_ls
-    ]
+    validation_sampling_steps = []
     for validation_sampling_step in args.validation_sampling_steps.split(","):
         validation_sampling_step = int(validation_sampling_step)
-        for validation_guidance_scale in validation_guidance_scale_ls:
+        validation_sampling_steps.append(validation_sampling_step)
+    #print("sssssssssssszzzzz")
+    caption = [
+    # "Time-lapse of ice grass growing in a pot over 24 days, showing the transformation from a seedling to a robust plant with distinctive crystalline structures on its leaves, evident in the increasing leaf size, density, and pot space filled.",
+    "A cat walks on the grass, realistic style.",
+  #  "Time-lapse of a peanut plant's development over a period of 157 days. Beginning with the emergence of a shoot from the soil, the plant exhibits gradual stages of growth, including increased height, foliage, and overall robustness, illustrating its journey to full maturity.",
+ #   "Time-lapse of cat grass (wheat) seeds germination over a 5-day period: starting with soaked seeds and progressing through visible sprouting stages to fuller growth, capturing the development from beginning to end.",
+    #"Time-lapse of a corn plant's growth over 9 days, starting from a sprout with a single leaf and progressing to a taller seedling with two fully developed leaves, thus indicating a healthy vegetative state.",
+   # "Time-lapse of cat grass germination and growth over a series of stages: starting as freshly sprouted short grass, gradually increasing in height and density, leading to the grass at its tallest and most robust form at the final stage.",
+   # "Time-lapse of a pink rose transitioning from a closed bud to full bloom. The sequence progresses forward, capturing each stage as the petals curl outward, eventually displaying the intricate layers of the fully opened flower against a contrasting black background."
+]
+    negative_prompt = "Aerial view, aerial view, overexposed, low quality, deformation, a poor composition, bad hands, bad teeth, bad eyes, bad limbs, distortion"
+    for _ in range(5):
+        if nccl_info.global_rank == 0:
+            validation_guidance_scale = 1.0
+            # (
+            #     pixel_values_vid,
+            #     pixel_values_ref_img,
+            #     caption,
+            # ) = next(loader_val)
+            #print("zzzzzzzzzz111111")
+            prompt_embeds, prompt_attention_mask = text_encoder.encode_prompt(prompt=caption[_])
+            prompt_embeds, prompt_attention_mask = prompt_embeds.to(device), prompt_attention_mask.to(device)
+            #print("zzzzzzzzzz")
             videos = []
-            # prompt_embed are named embed0 to embedN
-            # check how many embeds are there
-            embe_dir = os.path.join(args.validation_prompt_dir, "prompt_embed")
-            mask_dir = os.path.join(args.validation_prompt_dir,
-                                    "prompt_attention_mask")
-            embeds = sorted([f for f in os.listdir(embe_dir)])
-            masks = sorted([f for f in os.listdir(mask_dir)])
-            num_embeds = len(embeds)
-            validation_prompt_ids = list(range(num_embeds))
-            num_sp_groups = int(os.getenv("WORLD_SIZE",
-                                          "1")) // nccl_info.sp_size
-            # pad to multiple of groups
-            if num_embeds % num_sp_groups != 0:
-                validation_prompt_ids += [0] * (num_sp_groups -
-                                                num_embeds % num_sp_groups)
-            num_embeds_per_group = len(validation_prompt_ids) // num_sp_groups
-            local_prompt_ids = validation_prompt_ids[nccl_info.group_id *
-                                                     num_embeds_per_group:
-                                                     (nccl_info.group_id + 1) *
-                                                     num_embeds_per_group]
 
-            for i in local_prompt_ids:
-                prompt_embed_path = os.path.join(embe_dir, f"{embeds[i]}")
-                prompt_mask_path = os.path.join(mask_dir, f"{masks[i]}")
-                prompt_embeds = (torch.load(
-                    prompt_embed_path, map_location="cpu",
-                    weights_only=True).to(device).unsqueeze(0))
-                prompt_attention_mask = (torch.load(
-                    prompt_mask_path, map_location="cpu",
-                    weights_only=True).to(device).unsqueeze(0))
-                negative_prompt_embeds = torch.zeros(
-                    256, 4096).to(device).unsqueeze(0)
-                negative_prompt_attention_mask = (
-                    torch.zeros(256).bool().to(device).unsqueeze(0))
+            #prompt_embeds = prompt_embeds[nccl_info.group_id]
+            #prompt_attention_mask = prompt_attention_mask[nccl_info.group_id]
+            negative_prompt_embeds, negative_prompt_attention_mask = text_encoder.encode_prompt(prompt=negative_prompt)
+            negative_prompt_embeds, negative_prompt_attention_mask = negative_prompt_embeds.to(device), negative_prompt_attention_mask.to(device)
+            
+            for validation_sampling_step in validation_sampling_steps:
                 generator = torch.Generator(device="cpu").manual_seed(12345)
                 video = sample_validation_video(
-                    args.model_type,
-                    transformer,
-                    vae,
-                    scheduler,
-                    scheduler_type=scheduler_type,
-                    num_frames=args.num_frames,
-                    height=args.num_height,
-                    width=args.num_width,
-                    num_inference_steps=validation_sampling_step,
-                    guidance_scale=validation_guidance_scale,
-                    generator=generator,
-                    prompt_embeds=prompt_embeds,
-                    prompt_attention_mask=prompt_attention_mask,
-                    negative_prompt_embeds=negative_prompt_embeds,
-                    negative_prompt_attention_mask=
-                    negative_prompt_attention_mask,
-                    vae_spatial_scale_factor=vae_spatial_scale_factor,
-                    vae_temporal_scale_factor=vae_temporal_scale_factor,
-                    num_channels_latents=num_channels_latents,
-                )[0]
-                if nccl_info.rank_within_group == 0:
-                    videos.append(video[0])
-            # collect videos from all process to process zero
+                            args.model_type,
+                            transformer,
+                            vae,
+                            scheduler,
+                            scheduler_type=scheduler_type,
+                            num_frames=args.num_frames,
+                            height=args.num_height,
+                            width=args.num_width,
+                            num_inference_steps=validation_sampling_step,
+                            guidance_scale=validation_guidance_scale,
+                            generator=generator,
+                            prompt_embeds=prompt_embeds,
+                            prompt_attention_mask=prompt_attention_mask,
+                            negative_prompt_embeds=negative_prompt_embeds,
+                            negative_prompt_attention_mask=negative_prompt_attention_mask,
+                            #negative_prompt_embeds_2=negative_prompt_embeds_2,
+                            vae_spatial_scale_factor=vae_spatial_scale_factor,
+                            vae_temporal_scale_factor=vae_temporal_scale_factor,
+                            num_channels_latents=num_channels_latents,
+                            #prompt_embeds_2=prompt_embeds_2,
+                        )[0]
+                filename = os.path.join(
+                            args.output_dir,
+                            f"step_{global_step}_sample_{validation_sampling_step}_guidance_{validation_guidance_scale}_video.mp4",
+                        )
+                print(filename)
+                export_to_video(video[0], filename, fps=fps)
+#                 print("sssssssssssssssss",nccl_info.rank_within_group)
+#                 if nccl_info.rank_within_group == 0:
+#                     videos.append(video[0])
+#                 # collect videos from all process to process zero
 
-            gc.collect()
-            torch.cuda.empty_cache()
-            # log if main process
-            torch.distributed.barrier()
-            all_videos = [
-                None for i in range(int(os.getenv("WORLD_SIZE", "1")))
-            ]  # remove padded videos
-            torch.distributed.all_gather_object(all_videos, videos)
-            if nccl_info.global_rank == 0:
-                # remove padding
-                videos = [video for videos in all_videos for video in videos]
-                videos = videos[:num_embeds]
-                # linearize all videos
-                video_filenames = []
-                for i, video in enumerate(videos):
-                    filename = os.path.join(
-                        args.output_dir,
-                        f"validation_step_{global_step}_sample_{validation_sampling_step}_guidance_{validation_guidance_scale}_video_{i}.mp4",
-                    )
-                    export_to_video(video, filename, fps=fps)
-                    video_filenames.append(filename)
-
-                logs = {
-                    f"{'ema_' if ema else ''}validation_sample_{validation_sampling_step}_guidance_{validation_guidance_scale}":
-                    [
-                        wandb.Video(filename)
-                        for i, filename in enumerate(video_filenames)
-                    ]
-                }
-                wandb.log(logs, step=global_step)
+#                 gc.collect()
+#                 torch.cuda.empty_cache()
+#                 # log if main process
+#                 #torch.distributed.barrier()
+#                 all_videos = [
+#                         None for i in range(int(os.getenv("WORLD_SIZE", "1")))
+#                     ]  # remove padded videos
+#                 torch.distributed.all_gather_object(all_videos, videos)
+#                 print("sssssssssssssssss",nccl_info.global_rank)
+#                 if nccl_info.global_rank == 0:
+#                     # remove padding
+#                     videos = [video for videos in all_videos for video in videos]
+#                     # linearize all videos
+#                     video_filenames = []
+#                     for i, video in enumerate(videos):
+#                         filename = os.path.join(
+#                             args.output_dir,
+#                             f"step_{global_step}_sample_{validation_sampling_step}_guidance_{validation_guidance_scale}_video_{i}.mp4",
+#                         )
+#                         print(filename, video)
+#                         save_videos_grid(video, filename, fps=24)
+#                         #export_to_video(video, filename, fps=fps)
+#                         #video_filenames.append(filename)
+       # torch.distributed.barrier()

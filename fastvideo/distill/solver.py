@@ -284,15 +284,21 @@ class EulerSolver:
                                         len(self.euler_timesteps),
                                         num=multiphase,
                                         endpoint=False)
+        #print(multiphase,inference_indices,"11111111111")
+
         inference_indices = np.floor(inference_indices).astype(np.int64)
         inference_indices = (torch.from_numpy(inference_indices).long().to(
             self.euler_timesteps.device))
+        #print(inference_indices,"2222222222222")
         expanded_timestep_index = timestep_index.unsqueeze(1).expand(
             -1, inference_indices.size(0))
+        #print(expanded_timestep_index,"33333333333333333")
         valid_indices_mask = expanded_timestep_index >= inference_indices
+        #print(valid_indices_mask,"44444444444444444")
         last_valid_index = valid_indices_mask.flip(dims=[1]).long().argmax(
             dim=1)
         last_valid_index = inference_indices.size(0) - 1 - last_valid_index
+        #print(last_valid_index,"555555555555555555")
         timestep_index_end = inference_indices[last_valid_index]
 
         if is_target:
@@ -303,6 +309,7 @@ class EulerSolver:
                                         sample.shape)
         sigma_prev = extract_into_tensor(self.sigmas_prev, timestep_index_end,
                                          sample.shape)
+        #print(timestep_index_end,"ssssssssss")
         x_prev = sample + (sigma_prev - sigma) * model_pred
-
+        #print(timestep_index_end)
         return x_prev, timestep_index_end

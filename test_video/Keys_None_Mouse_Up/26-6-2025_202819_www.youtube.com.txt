@@ -1,0 +1,5 @@
+Start Frame: 0
+End Frame: 0
+Duration: 49 frames
+Keys: None
+Mouse: ↑

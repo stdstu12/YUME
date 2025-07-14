@@ -84,6 +84,7 @@ def save_checkpoint(transformer, rank, output_dir, step):
         # save dict as json
         with open(config_path, "w") as f:
             json.dump(config_dict, f, indent=4)
+        del cpu_state
     main_print(f"--> checkpoint saved at step {step}")
 
 
@@ -241,6 +242,7 @@ def resume_training(model, optimizer, checkpoint_dir, discriminator=False):
         current_state = model.state_dict()
         current_state.update(model_weights)
         model.load_state_dict(current_state, strict=False)
+        del current_state
     if discriminator:
         optim_path = os.path.join(checkpoint_dir, "discriminator_optimizer.pt")
     else:
@@ -251,6 +253,44 @@ def resume_training(model, optimizer, checkpoint_dir, discriminator=False):
     optimizer.load_state_dict(optim_state)
     step = int(checkpoint_dir.split("-")[-1])
     return model, optimizer, step
+
+import torch
+import gc 
+
+def resume_checkpoint(model, checkpoint_dir):
+    weight_path = os.path.join(checkpoint_dir,
+                               "diffusion_pytorch_model.safetensors")
+
+    model_weights = load_file(weight_path)
+
+
+    current_state = model.state_dict()
+    current_state.update(model_weights)
+    model.load_state_dict(current_state, strict=False)
+    del current_state
+    torch.cuda.empty_cache()
+    torch.cuda.empty_cache()
+    gc.collect()
+
+    step = int(checkpoint_dir.split("-")[-1])
+    return model, step
+
+def resume_checkpoint_yume(model, checkpoint_dir):
+    weight_path = os.path.join(checkpoint_dir,
+                               "diffusion_pytorch_model.safetensors")
+
+    model_weights = load_file(weight_path)
+
+
+    current_state = model.state_dict()
+    current_state.update(model_weights)
+    model.load_state_dict(current_state, strict=False)
+    del current_state
+    torch.cuda.empty_cache()
+    torch.cuda.empty_cache()
+    gc.collect()
+
+    return model
 
 
 def save_lora_checkpoint(transformer, optimizer, rank, output_dir, step,
