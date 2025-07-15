@@ -1012,7 +1012,7 @@ def main(args):
     denoiser = load_denoiser()
 
     if args.jpg_dir != None:
-        dataset_ddp = create_scaled_videos("/mnt/petrelfs/maoxiaofeng/FastVideo_i2v_pack/jpg/", 
+        dataset_ddp = create_scaled_videos(args.jpg_dir, 
                                         total_frames=33, 
                                         H1=544, 
                                         W1=960)
