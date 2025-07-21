@@ -81,3 +81,27 @@ We learned and reused code from the following projects:
 - [Skywork-Reward-V2](https://github.com/SkyworkAI/Skywork-Reward-V2)
 - [MDT](https://github.com/sail-sg/MDT)
 - [AddSR](https://github.com/NJU-PCALab/AddSR)
+
+## 🧱 Data Preprocess
+path_to_dataset_folder/
+├── Keys_None_Mouse_Down/
+│   ├── 0.mp4
+│   ├── 0.txt
+│   ├── 1.mp4
+│   ├── 1.txt
+├── Keys_None_Mouse_Up
+│──  ...
+└── Keys_S_Mouse_·
+
+The provided TXT file content appears to record either camera motion control parameters or animation keyframe data, with the following field definitions:
+```
+Start Frame: 2 #Starting frame number (begins at frame 0 at origin video)
+
+End Frame: 50 #Ending frame number (identical to start frame, suggesting a static scene or no movement)
+
+Duration: 49 frames  #Total duration
+
+Keys: W #Keyboard input
+
+Mouse: ↓ #Mouse action
+```
