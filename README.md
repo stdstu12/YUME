@@ -5,14 +5,14 @@
 Yume is a long-term project that aims to create an interactive, realistic, and dynamic world through the input of text, images, or videos.
 
 
-
 <div align="center">
 [![project page](https://img.shields.io/badge/Project-Page-2ea44f)](https://stdstu12.github.io/YUME-Project/)&nbsp;
 [![arXiv](https://img.shields.io/badge/arXiv%20paper-2506.15675-b31b1b.svg)](https://arxiv.org/abs/2506.15675)&nbsp;
 [![demo](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Dataset-blue)](https://huggingface.co/stdstu123/Yume-I2V-540P)&nbsp;
 [![YouTube](https://badges.aleen42.com/src/youtube.svg)](https://www.youtube.com/watch?v=X6fFzsLp_3Q)&nbsp;
-
 </div>
+
+
 - A distillation recipes for video DiT.
 - [FramePack-based](https://github.com/lllyasviel/FramePack) training code.
 - Long video generation method with DDP sampling support
