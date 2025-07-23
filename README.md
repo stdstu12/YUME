@@ -21,7 +21,7 @@ Yume currently offers: (with more to come)
 ## 🎥 Demo
 
 
-https://github.com/user-attachments/assets/59f3c5db-d585-4773-8d92-366c1eb040f0
+https://github.com/user-attachments/assets/59f3c5db-d585-4773-8d92-366c1eb040f0](https://www.youtube.com/watch?v=X6fFzsLp_3Q
 
 
 ## 🔧 Installation
