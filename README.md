@@ -18,6 +18,10 @@ Yume currently offers: (with more to come)
 - [FramePack-based](https://github.com/lllyasviel/FramePack) training code.
 - Long video generation method with DDP sampling support
 
+## 🎥 Demo
+
+
+https://github.com/user-attachments/assets/59f3c5db-d585-4773-8d92-366c1eb040f0
 
 
 ## 🔧 Installation
