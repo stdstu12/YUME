@@ -7,7 +7,7 @@ Yume is a long-term project that aims to create an interactive, realistic, and d
 
 
 <p align="center">
-    🤗 <a href="https://github.com/stdstu12/YUME-World"  target="_blank">YUME</a>  | 📜 <a href="https://github.com/stdstu12/YUME-World" target="_blank">Paper</a> 
+    🤗 <a href="https://huggingface.co/stdstu123/Yume-I2V-540P"  target="_blank">YUME</a>  | 📜 <a href="https://github.com/stdstu12/YUME-World" target="_blank">Paper</a> 
 </p> 
 
 
@@ -48,15 +48,48 @@ We perform TTS sampling, where `args.sde` controls whether to use SDE-based samp
 bash scripts/inference/sample_tts.sh 
 ```
 
+For optimal results, we recommend keeping Actual distance, Angular change rate (turn speed), and View rotation speed within the range of 0.1 to 10. 
+
+Key adjustment guidelines:
+1. When executing Camera remains still (·), reduce the Actual distance value
+2. When executing Person stands still, decrease both Angular change rate and View rotation speed values
+
+Note that these parameters (Actual distance, Angular change rate, and View rotation speed) do impact generation results. As an alternative approach, you may consider removing these parameters entirely for simplified operation.
+
+
+
 ## 🎯 Training & Distill 
-For model training, we use args.MVDT to launch the MVDT framework, which requires at least 16 A100 GPUs. Loading T5 onto the CPU may help conserve GPU memory. We employ args.Distil to enable adversarial distillation.
+For model training, we use `args.MVDT` to launch the MVDT framework, which requires at least 16 A100 GPUs. Loading T5 onto the CPU may help conserve GPU memory. We employ `args.Distil` to enable adversarial distillation.
 ```bash
 # Download the model weights and place them in Path_To_Yume.
 bash scripts/finetune/finetune.sh
 ```
 
-#### Dataset Preparation
+## 🧱 Dataset Preparation
 Please refer to https://github.com/Lixsp11/sekai-codebase to download the dataset. For the processed data format, refer to `./test_video`.
+```
+path_to_processed_dataset_folder/
+├── Keys_None_Mouse_Down/ 
+│   ├── video_id.mp4
+│   ├── video_id.txt
+├── Keys_None_Mouse_Up
+│──  ...
+└── Keys_S_Mouse_·
+```
+The provided TXT file content record either camera motion control parameters or animation keyframe data, with the following field definitions:
+```
+Start Frame: 2 #Starting frame number (begins at frame 2 at origin video)
+
+End Frame: 50 #Ending frame number
+
+Duration: 49 frames #Total duration
+
+Keys: W #Keyboard input
+
+Mouse: ↓ #Mouse action
+```
+In `scripts/finetune/finetune.sh`, `args.root_dir` represents the `path_to_processed_dataset_folder`, and `args.root_dir` represents the full path to the Sekai dataset.
+
 
 ## 📑 Development Plan
 - Dataset processing
@@ -81,27 +114,3 @@ We learned and reused code from the following projects:
 - [Skywork-Reward-V2](https://github.com/SkyworkAI/Skywork-Reward-V2)
 - [MDT](https://github.com/sail-sg/MDT)
 - [AddSR](https://github.com/NJU-PCALab/AddSR)
-
-## 🧱 Data Preprocess
-path_to_dataset_folder/
-├── Keys_None_Mouse_Down/
-│   ├── 0.mp4
-│   ├── 0.txt
-│   ├── 1.mp4
-│   ├── 1.txt
-├── Keys_None_Mouse_Up
-│──  ...
-└── Keys_S_Mouse_·
-
-The provided TXT file content appears to record either camera motion control parameters or animation keyframe data, with the following field definitions:
-```
-Start Frame: 2 #Starting frame number (begins at frame 0 at origin video)
-
-End Frame: 50 #Ending frame number (identical to start frame, suggesting a static scene or no movement)
-
-Duration: 49 frames  #Total duration
-
-Keys: W #Keyboard input
-
-Mouse: ↓ #Mouse action
-```

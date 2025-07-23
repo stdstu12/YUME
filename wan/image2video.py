@@ -125,8 +125,7 @@ class Yume:
         """
         
         self.config = config
-        self.use_usp = use_usp
-        self.t5_cpu = t5_cpu
+
 
         self.num_train_timesteps = config.num_train_timesteps
         self.param_dtype = config.param_dtype
@@ -154,6 +153,7 @@ class Yume:
         }
         self.model = WanModel.from_config(config_wan)  
         self.model.patch_embedding_2x = upsample_conv3d_weights(deepcopy(self.model.patch_embedding),(1,4,4))
+        self.model.patch_embedding_2x_f = torch.nn.Conv3d(36, 36, kernel_size=(1,4,4), stride=(1,4,4))
         self.model.patch_embedding_4x = upsample_conv3d_weights(deepcopy(self.model.patch_embedding),(1,8,8))
         self.model.patch_embedding_8x = upsample_conv3d_weights(deepcopy(self.model.patch_embedding),(1,16,16))
         self.model.patch_embedding_16x = upsample_conv3d_weights(deepcopy(self.model.patch_embedding),(1,32,32))
@@ -175,6 +175,9 @@ class Yume:
             t5_cpu=False,
             init_on_cpu=True,
         ):
+        self.use_usp = use_usp
+        self.t5_cpu = t5_cpu
+
         self.device = torch.device(f"cuda:{device_id}")
         self.text_encoder = T5EncoderModel(
             text_len=config.text_len,
@@ -188,8 +191,7 @@ class Yume:
         if not t5_cpu:
             self.text_encoder.model.to(self.device)
             self.t5_device = self.device
-        else:
-             self.t5_device = "cpu"
+
 
         self.vae_stride = config.vae_stride
         self.vae = WanVAE(
@@ -320,10 +322,18 @@ class Yume:
         if n_prompt == "":
             n_prompt = self.sample_neg_prompt
 
-        context = self.text_encoder(input_prompt, self.t5_device)
+        if not self.t5_cpu:
+            context = self.text_encoder(input_prompt, self.device)
+        else:
+            context = self.text_encoder(input_prompt, torch.device('cpu'))
+            context = [context[0].to(self.device)]
 
         cache_path_null = "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
-        context_null = self.text_encoder([cache_path_null], self.t5_device)
+        if not self.t5_cpu:
+            context_null = self.text_encoder([cache_path_null], self.device)
+        else:
+            context_null = self.text_encoder([cache_path_null], torch.device('cpu'))
+            context_null = [context_null[0].to(self.device)]
 
         self.clip.model.to(self.device)
         if rand_num_img < 0.4:
@@ -455,10 +465,18 @@ class Yume:
         if n_prompt == "":
             n_prompt = self.sample_neg_prompt
 
-        context = self.text_encoder(input_prompt, self.device) 
+        if not self.t5_cpu:
+            context = self.text_encoder(input_prompt, self.device)
+        else:
+            context = self.text_encoder(input_prompt, torch.device('cpu'))
+            context = [context[0].to(self.device)]
 
         cache_path_null = "Bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, misshapen limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards"
-        context_null = self.text_encoder([cache_path_null], self.device)
+        if not self.t5_cpu:
+            context_null = self.text_encoder([cache_path_null], self.device)
+        else:
+            context_null = self.text_encoder([cache_path_null], torch.device('cpu'))
+            context_null = [context_null[0].to(self.device)]
 
         self.clip.model.to(self.device)
         if rand_num_img < 0.4:

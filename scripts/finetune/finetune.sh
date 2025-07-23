@@ -20,5 +20,7 @@ torchrun --nproc_per_node 8 --master_port 29607 \
     --allow_tf32 \
     --MVDT \
     --Distil \
+    --t5_cpu \
+    --root_dir="./mp4_frame" \
+    --full_mp4="./Sekai/" \
     --output_dir="./outputs"
-    #--resume_from_checkpoint "./outputs/checkpoint-350/"

@@ -275,21 +275,65 @@ def resume_checkpoint(model, checkpoint_dir):
     step = int(checkpoint_dir.split("-")[-1])
     return model, step
 
+import os
+import json
+import gc
+import torch
+from safetensors import safe_open
+from safetensors.torch import load_file
+
 def resume_checkpoint_yume(model, checkpoint_dir):
-    weight_path = os.path.join(checkpoint_dir,
-                               "diffusion_pytorch_model.safetensors")
+    device = next(model.parameters()).device
 
-    model_weights = load_file(weight_path)
+    index_path = os.path.join(checkpoint_dir, "diffusion_pytorch_model.safetensors.index.json")
+    if os.path.exists(index_path):
+        try:
 
+            with open(index_path, "r") as f:
+                index_data = json.load(f)
+            
+            unique_shards = set(index_data["weight_map"].values())
+            model_weights = {}
 
-    current_state = model.state_dict()
-    current_state.update(model_weights)
-    model.load_state_dict(current_state, strict=False)
-    del current_state
-    torch.cuda.empty_cache()
-    torch.cuda.empty_cache()
-    gc.collect()
+            for shard_name in unique_shards:
+                shard_path = os.path.join(checkpoint_dir, shard_name)
 
+                if not os.path.exists(shard_path):
+                    raise FileNotFoundError(f"Missing shard file: {shard_path}")
+
+                with safe_open(shard_path, framework="pt") as f:
+                    for key in f.keys():
+                        model_weights[key] = f.get_tensor(key).to(device)
+                        torch.cuda.empty_cache()
+                        gc.collect()
+        except Exception as e:
+            raise RuntimeError(f"Failed to load sharded model: {str(e)}")
+    else:
+        full_model_path = os.path.join(checkpoint_dir, "diffusion_pytorch_model.safetensors")
+        
+        if not os.path.exists(full_model_path):
+            raise FileNotFoundError(f"No model files found in: {checkpoint_dir}")
+        try:
+            model_weights = load_file(full_model_path, device=device)
+        except Exception as e:
+            raise RuntimeError(f"Failed to load full model: {str(e)}")
+
+    try:
+        missing_keys, unexpected_keys = model.load_state_dict(model_weights, strict=False)
+        print("Successfully loaded")
+        if missing_keys:
+            print(f"Missing keys in checkpoint: {missing_keys[:5]}... (total {len(missing_keys)})")
+        if unexpected_keys:
+            print(f"Unexpected keys in checkpoint: {unexpected_keys[:5]}... (total {len(unexpected_keys)})")
+    
+    except Exception as e:
+        raise RuntimeError(f"Failed to update model weights: {str(e)}")
+    
+    finally:
+        del model_weights
+        torch.cuda.empty_cache()
+        gc.collect()
+    
     return model
 
 

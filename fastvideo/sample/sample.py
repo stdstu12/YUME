@@ -117,13 +117,11 @@ def calculate_speed(traj_pos_coord, fps=30, stride=1):
     speeds: List of speed values corresponding to each displacement (m/s)
     """
     speeds = []
-    time_interval = stride / fps  # 每次位移的时间间隔(秒)
+    time_interval = stride / fps  
     
     for displacement in traj_pos_coord:
-        # 计算位移向量模长(总移动距离)
         distance = np.linalg.norm(displacement)
         
-        # 速度 = 距离 / 时间
         speed = distance / time_interval
         speeds.append(speed)
     
@@ -639,7 +637,7 @@ def create_scaled_videos(folder_path, total_frames=33, H1=256, W1=256):
         except Exception as e:
             print(f"Error {img_path}: {e}")
     
-    return video_list
+    return video_list, len(video_list)
 
 def sample_one(
     transformer,
@@ -672,7 +670,7 @@ def sample_one(
     )
     if image_sample:
         # Read image files and caption.txt (for text conditioning).
-        pixel_values_vid, videoid = dataset_ddp[(rank+(step-1)*8)%len(dataset_ddp)]
+        pixel_values_vid, videoid = dataset_ddp[index]
         pixel_values_ref_img = pixel_values_vid[0,:,:,:]
         caption = []
         with open(caption_path, 'r', encoding='utf-8') as file:
@@ -940,10 +938,6 @@ def main(args):
         config=cfg,
         checkpoint_dir=ckpt_dir,
         device="cpu",
-        t5_fsdp=False,
-        dit_fsdp=False,
-        use_usp=False,
-        t5_cpu=False,
     )    
     from wan.modules.model import ConvNext3D,WanAttentionBlock,WanI2VCrossAttention,WanLayerNorm
     transformer = wan_i2v.model
@@ -954,7 +948,7 @@ def main(args):
     # transformer.patch_embedding_16x = upsample_conv3d_weights(deepcopy(transformer.patch_embedding),(1,32,32))
     # transformer.patch_embedding_2x_f = torch.nn.Conv3d(36, 36, kernel_size=(1,4,4), stride=(1,4,4))
 
-    transformer = transformer.to(torch.bfloat16)
+    # transformer = transformer.to(torch.bfloat16)
         
     main_print(
         f"  Total Sample parameters = {sum(p.numel() for p in transformer.parameters() if p.requires_grad) / 1e6} M"
@@ -980,7 +974,7 @@ def main(args):
             args.resume_from_checkpoint,
         )
 
-    #transformer = transformer.to(device)
+    transformer = transformer.to(device)
 
     transformer = FSDP(
         transformer,
@@ -994,6 +988,9 @@ def main(args):
     main_print(
         f"  Master weight dtype: {transformer.parameters().__next__().dtype}")
 
+    
+    main_print(
+        f"  T5 CPU: {args.t5_cpu}")
     #init t5, clip and vae
     wan_i2v.init_model(
         config=cfg,
@@ -1002,7 +999,7 @@ def main(args):
         t5_fsdp=False,
         dit_fsdp=False,
         use_usp=False,
-        t5_cpu=False,
+        t5_cpu=args.t5_cpu,
     )
     vae = wan_i2v.vae
 
@@ -1012,7 +1009,7 @@ def main(args):
     denoiser = load_denoiser()
 
     if args.jpg_dir != None:
-        dataset_ddp = create_scaled_videos(args.jpg_dir, 
+        dataset_ddp, dataset_length = create_scaled_videos(args.jpg_dir, 
                                         total_frames=33, 
                                         H1=544, 
                                         W1=960)
@@ -1074,6 +1071,7 @@ if __name__ == "__main__":
     parser.add_argument("--group_frame", action="store_true")  # TODO
     parser.add_argument("--group_resolution", action="store_true")  # TODO
 
+    parser.add_argument("--t5_cpu", action="store_true") 
 
     # diffusion setting
     parser.add_argument("--ema_decay", type=float, default=0.95)

@@ -59,9 +59,6 @@ class T2V_dataset(Dataset):
             n_sample_frames,
             width,
             height,
-            random_frame_stride=True,
-            csv_file_path="/inspire/hdd/global_user/zhangkaipeng-24043/mmeval/openwebvid/data/train/OpenVidHD.csv",
-            video_dir="/inspire/hdd/global_user/zhangkaipeng-24043/mmeval/openwebvid/video/",
             training=True,
             cache_file="vid_meta_cache.pkl",
     ):
@@ -254,25 +251,6 @@ def parse_txt_frame(txt_path):
 
 
 
-def normalize_c2w_matrices(T_list):
-    T0_inv = np.linalg.inv(T_list[0])
-    T_aligned = [T0_inv @ T for T in T_list]
-
-    T_convert = np.array(
-        [
-            [1, 0, 0, 0],
-            [0, -1, 0, 0],  
-            [0, 0, -1, 0], 
-            [0, 0, 0, 1],
-        ]
-    )
-    T_aligned = [T_convert @ T for T in T_aligned]
-
-
-    return np.array(T_aligned)
-
-
-
 class StableVideoAnimationDataset(Dataset):
     def __init__(
             self,
@@ -280,9 +258,8 @@ class StableVideoAnimationDataset(Dataset):
             n_sample_frames,
             width,
             height,
-            random_frame_stride=True,
-            csv_file_path="/inspire/hdd/global_user/zhangkaipeng-24043/mmeval/openwebvid/data/train/OpenVidHD.csv",
-            video_dir="/inspire/hdd/global_user/zhangkaipeng-24043/mmeval/openwebvid/video/",
+            root_dir="./mp4_frame",
+            full_mp4="./sekai/",
             training=True,
             cache_file="vid_meta_cache.pkl",
     ):
@@ -292,8 +269,8 @@ class StableVideoAnimationDataset(Dataset):
         self.img_size = (height, width)
         self.height = height
         self.width = width
-        self.random_frame_stride = random_frame_stride
-        self.video_dir = video_dir
+        self.root_dir = root_dir
+        self.full_mp4 = full_mp4
         self.cache_file = cache_file
         resize = [
             CenterCropResizeVideo((height, width)),
@@ -306,9 +283,7 @@ class StableVideoAnimationDataset(Dataset):
         self.vid_meta = []
 
 
-        root_dir = "/mnt/petrelfs/maoxiaofeng/mp4_frame_game_2"
         MAX_FILES_PER_CATEGORY = 4000 
-        full_mp4 = "/mnt/petrelfs/maoxiaofeng/files2/" 
 
         cnt = 0
         for subdir in glob.glob(os.path.join(root_dir, '*/')):
@@ -322,7 +297,6 @@ class StableVideoAnimationDataset(Dataset):
             for mp4_path in mp4_files:
                 base_name = os.path.splitext(os.path.basename(mp4_path))[0]
                 txt_path = os.path.join(subdir, f"{base_name}.txt")
-                
                 npz_path = os.path.join(subdir, f"{base_name}.npy")
 
                 prefix = base_name.split('_frames_')[0]
@@ -407,7 +381,7 @@ class StableVideoAnimationDataset(Dataset):
             pixel_values_vid = torch.stack([self.simple_transform(img) for img in vid_pil_image_list], dim=0)
 
         if len(vid_pil_image_list) < 33:
-            error_msg = f"视频帧数不足33帧（实际{len(vid_pil_image_list)}帧），跳过片段: {full_mp4_1}"
+            error_msg = f"{len(vid_pil_image_list)}, Skip: {full_mp4_1}"
             print(error_msg)
             raise ValueError(error_msg) 
 
@@ -492,7 +466,7 @@ class StableVideoAnimationDataset(Dataset):
         sample['pixel_values'] = pixel_values
         sample['pixel_values_ref_img'] = pixel_values_ref_img
 
-        return sample['pixel_values'],sample['pixel_values_ref_img'],sample['caption'] ,sample['keys'],sample['mouse'],sample['videoid']
+        return sample['pixel_values'],sample['pixel_values_ref_img'], sample['caption'] ,sample['keys'],sample['mouse'],sample['videoid']
 
     def __len__(self):
         return self.length

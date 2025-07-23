@@ -117,13 +117,11 @@ def calculate_speed(traj_pos_coord, fps=30, stride=1):
     speeds: List of speed values corresponding to each displacement (m/s)
     """
     speeds = []
-    time_interval = stride / fps  # 每次位移的时间间隔(秒)
+    time_interval = stride / fps  
     
     for displacement in traj_pos_coord:
-        # 计算位移向量模长(总移动距离)
         distance = np.linalg.norm(displacement)
-        
-        # 速度 = 距离 / 时间
+
         speed = distance / time_interval
         speeds.append(speed)
     
@@ -564,7 +562,7 @@ def create_scaled_videos(folder_path, total_frames=33, H1=256, W1=256):
         except Exception as e:
             print(f"Error {img_path}: {e}")
     
-    return video_list
+    return video_list, len(video_list)
 
 def sample_one(
     transformer,
@@ -702,10 +700,7 @@ def sample_one(
                             noise_pred_cond = transformer(
                                 latent_model_input, 
                                 t=timestep, 
-                                noise=noise, 
                                 rand_num_img=rand_num_img, 
-                                plucker=plucker, 
-                                plucker_train=True, 
                                 latent_frame_zero=latent_frame_zero, 
                                 **arg_c
                             )[0]
@@ -714,10 +709,7 @@ def sample_one(
                             noise_pred_uncond = transformer(
                                 latent_model_input, 
                                 t=timestep, 
-                                noise=noise, 
                                 rand_num_img=rand_num_img, 
-                                plucker=plucker, 
-                                plucker_train=False, 
                                 latent_frame_zero=latent_frame_zero, 
                                 **arg_null
                             )[0]
@@ -751,7 +743,6 @@ def sample_one(
                                 prev_sample_mean = prev_sample_mean + log_term * dsigma
                                 temp_x0 = prev_sample_mean + torch.randn_like(prev_sample_mean) * std_dev_t 
                                                 
-
 
                             if time_travel_interval > 0 and i % time_travel_interval == 0:
 
@@ -792,10 +783,7 @@ def sample_one(
                                         noise_pred_cond_travel = transformer(
                                             latent_model_input_travel, 
                                             t=travel_timestep, 
-                                            noise=noise_travel, 
                                             rand_num_img=rand_num_img, 
-                                            plucker=plucker, 
-                                            plucker_train=True, 
                                             latent_frame_zero=latent_frame_zero, 
                                             **arg_c
                                         )[0]
@@ -804,10 +792,7 @@ def sample_one(
                                         noise_pred_uncond_travel = transformer(
                                             latent_model_input_travel, 
                                             t=travel_timestep, 
-                                            noise=noise_travel, 
                                             rand_num_img=rand_num_img, 
-                                            plucker=plucker, 
-                                            plucker_train=False, 
                                             latent_frame_zero=latent_frame_zero, 
                                             **arg_null
                                         )[0]
@@ -830,10 +815,7 @@ def sample_one(
                                             log_term = -0.5 * eta**2 * score_estimate
                                             prev_sample_mean = prev_sample_mean + log_term * dsigma
                                             temp_x0_travel = prev_sample_mean + torch.randn_like(prev_sample_mean) * std_dev_t 
-                                                
-
-
-
+                                            
                                         index_travel = min(sample_step-1, j + 1)
                                         if step_sample > 0:
                                             latent_travel = torch.cat([
@@ -849,7 +831,6 @@ def sample_one(
                                             ], dim=1)
                                         current_pred = noise_pred_cond_travel
                                     
-
                                     current_latent = latent_travel.clone()
                                 
 
@@ -885,8 +866,6 @@ def sample_one(
                                         (1 - sampling_sigmas[index1]) * model_input[:, :-latent_frame_zero, :, :], 
                                         temp_x0
                                     ], dim=1)
-
-
 
 
                 end_time = time.time()
@@ -1002,10 +981,6 @@ def main(args):
         config=cfg,
         checkpoint_dir=ckpt_dir,
         device="cpu",
-        t5_fsdp=False,
-        dit_fsdp=False,
-        use_usp=False,
-        t5_cpu=False,
     )    
     from wan.modules.model import ConvNext3D,WanAttentionBlock,WanI2VCrossAttention,WanLayerNorm
     transformer = wan_i2v.model
@@ -1064,7 +1039,7 @@ def main(args):
         t5_fsdp=False,
         dit_fsdp=False,
         use_usp=False,
-        t5_cpu=False,
+        t5_cpu=args.t5_cpu,
     )
     vae = wan_i2v.vae
 
@@ -1074,7 +1049,7 @@ def main(args):
     denoiser = load_denoiser()
 
     if args.jpg_dir != None:
-        dataset_ddp = create_scaled_videos("/mnt/petrelfs/maoxiaofeng/FastVideo_i2v_pack/jpg/", 
+        dataset_ddp, dataset_length = create_scaled_videos(args.jpg_dir, 
                                         total_frames=33, 
                                         H1=544, 
                                         W1=960)
@@ -1105,7 +1080,7 @@ def main(args):
             rank = rank,
             world_size = world_size,
             image_sample = image_sample,
-            caption_path = args.caption_path
+            caption_path = args.caption_path,
             sde = args.sde
         )
 
@@ -1326,6 +1301,7 @@ if __name__ == "__main__":
         default="fp32",
         help="Weight type to use - fp32 or bf16.",
     )
+    parser.add_argument("--t5_cpu", action="store_true") 
     parser.add_argument(
         "--resume_from_checkpoint",
         type=str,

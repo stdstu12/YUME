@@ -158,7 +158,6 @@ class DINO(torch.nn.Module):
         return features
 
 from einops import rearrange
-#from torch import rearrange
 class SubPixelConvLayer(nn.Module):
     def __init__(self, in_channels, out_channels, upscale_factor):
         super(SubPixelConvLayer, self).__init__()
