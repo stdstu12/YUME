@@ -6,6 +6,18 @@ Yume is a long-term project that aims to create an interactive, realistic, and d
 
 
 <div align="center">
+
+
+
+
+[![project page](https://img.shields.io/badge/Project-Page-2ea44f)](https://lixsp11.github.io/sekai-project/)&nbsp;
+[![arXiv](https://img.shields.io/badge/arXiv%20paper-2506.15675-b31b1b.svg)](https://arxiv.org/abs/2506.15675)&nbsp;
+[![demo](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Dataset-blue)](https://huggingface.co/datasets/Lixsp11/Sekai-Project)&nbsp;
+[![YouTube](https://badges.aleen42.com/src/youtube.svg)](https://www.youtube.com/watch?v=5UQ0zAIZkSY)&nbsp;
+
+</div>
+
+<div align="center">
 [![project page](https://img.shields.io/badge/Project-Page-2ea44f)](https://stdstu12.github.io/YUME-Project/)&nbsp;
 [![arXiv](https://img.shields.io/badge/arXiv%20paper-2506.15675-b31b1b.svg)](https://arxiv.org/abs/2506.15675)&nbsp;
 [![demo](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Dataset-blue)](https://huggingface.co/stdstu123/Yume-I2V-540P)&nbsp;
