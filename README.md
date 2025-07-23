@@ -18,7 +18,7 @@ Yume is a long-term project that aims to create an interactive, realistic, and d
 </div>
 
 - A distillation recipes for video DiT.
-- [FramePack-based](https://github.com/lllyasviel/FramePack) training code.
+- [FramePack-Like](https://github.com/lllyasviel/FramePack) training code.
 - Long video generation method with DDP/FSDP sampling support
 
 
