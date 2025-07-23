@@ -40,6 +40,7 @@ For image-to-video generation, we use `--jpg_dir="./jpg"` to specify the input i
 # Download the model weights and place them in Path_To_Yume.
 bash scripts/inference/sample_jpg.sh 
 ```
+### SDE
 We also consider generating videos using the data from `./val`, where `--test_data_dir="./val"` specifies the location of the example data.
 ```bash
 # Download the model weights and place them in Path_To_Yume.
