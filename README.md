@@ -117,3 +117,16 @@ We learned and reused code from the following projects:
 - [Skywork-Reward-V2](https://github.com/SkyworkAI/Skywork-Reward-V2)
 - [MDT](https://github.com/sail-sg/MDT)
 - [AddSR](https://github.com/NJU-PCALab/AddSR)
+
+## Citation
+If you use Yume for your research, please cite our paper:
+
+```bibtex
+@article{li2025sekai,
+    title={Sekai: A Video Dataset towards World Exploration}, 
+    author={Zhen Li and Chuanhao Li and Xiaofeng Mao and Shaoheng Lin and Ming Li and Shitian Zhao and Zhaopan Xu and Xinyue Li and Yukang Feng and Jianwen Sun and Zizhen Li and Fanrui Zhang and Jiaxin Ai and Zhixiang Wang and Yuwei Wu and Tong He and Jiangmiao Pang and Yu Qiao and Yunde Jia and Kaipeng Zhang},
+    journal={arXiv preprint arXiv:2506.15675},
+    year={2025}
+}
+
+```
