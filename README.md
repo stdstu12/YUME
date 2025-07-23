@@ -20,7 +20,7 @@ Yume currently offers: (with more to come)
 
 ## 🎥 Demo
 
-[![Yume Model Demo](https://img.youtube.com/vi/X6fFzsLp_3Q/0.jpg)](https://www.youtube.com/watch?v=X6fFzsLp_3Q)
+<iframe width="560" height="315" src="https://www.youtube.com/embed/X6fFzsLp_3Q" frameborder="0" allowfullscreen></iframe>
 
 
 ## 🔧 Installation
