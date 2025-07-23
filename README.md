@@ -23,7 +23,7 @@ Yume is a long-term project that aims to create an interactive, realistic, and d
 
 ## 🎥 Demo
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/X6fFzsLp_3Q" frameborder="0" allowfullscreen></iframe>
+https://github.com/stdstu12/YUME-Project/raw/main/demo.mp4
 
 
 ## 🔧 Installation
