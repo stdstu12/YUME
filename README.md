@@ -21,9 +21,6 @@ Yume is a long-term project that aims to create an interactive, realistic, and d
 - [FramePack-based](https://github.com/lllyasviel/FramePack) training code.
 - Long video generation method with DDP sampling support
 
-## 🎥 Demo
-
-[![视频封面](thumbnail.jpg)](https://github.com/stdstu12/YUME-Project/raw/main/demo.mp4)
 
 
 ## 🔧 Installation
