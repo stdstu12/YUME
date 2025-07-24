@@ -125,11 +125,14 @@ We learned and reused code from the following projects:
 If you use Yume for your research, please cite our paper:
 
 ```bibtex
-@article{li2025sekai,
-    title={Sekai: A Video Dataset towards World Exploration}, 
-    author={Zhen Li and Chuanhao Li and Xiaofeng Mao and Shaoheng Lin and Ming Li and Shitian Zhao and Zhaopan Xu and Xinyue Li and Yukang Feng and Jianwen Sun and Zizhen Li and Fanrui Zhang and Jiaxin Ai and Zhixiang Wang and Yuwei Wu and Tong He and Jiangmiao Pang and Yu Qiao and Yunde Jia and Kaipeng Zhang},
-    journal={arXiv preprint arXiv:2506.15675},
-    year={2025}
+@misc{mao2025yumeinteractiveworldgeneration,
+      title={Yume: An Interactive World Generation Model}, 
+      author={Xiaofeng Mao and Shaoheng Lin and Zhen Li and Chuanhao Li and Wenshuo Peng and Tong He and Jiangmiao Pang and Mingmin Chi and Yu Qiao and Kaipeng Zhang},
+      year={2025},
+      eprint={2507.17744},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2507.17744}, 
 }
 
 ```
