@@ -1,0 +1,50 @@
+# syntax=docker/dockerfile:1.4
+FROM pytorch/pytorch:2.5.1-cuda12.1-cudnn9-devel
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CUDA_HOME=/usr/local/cuda-12.1
+ENV PATH="/usr/local/cuda-12.1/bin:${PATH}"
+
+WORKDIR /app
+
+# 1. Install system dependencies (including git for cloning and build tools for flash-attn)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ninja-build \
+    git \
+    curl \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Clone the repository
+RUN git clone https://github.com/stdstu12/YUME .
+
+# 3. Install Python dependencies
+# The base image has torch/torchvision. flash-attn will be compiled from source.
+RUN sed -i '/^torch/d' requirements.txt && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -e .
+
+# 4. Add an entrypoint to run the image-to-video demo
+COPY --chmod=755 <<'BASH' /app/entrypoint.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Create output directory
+mkdir -p ./outputs
+
+# Run the image-to-video sampling demo adapted from scripts/inference/sample_jpg.sh
+# The underlying script downloads model weights automatically.
+torchrun --nproc_per_node=1 fastvideo/sample/sample.py \
+    --video_output_dir="./outputs" \
+    --jpg_dir="./jpg" \
+    --caption_path="./caption.txt" \
+    --num_euler_timesteps 50 \
+    --seed 42 \
+    --mixed_precision="bf16" \
+    --allow_tf32 \
+    --t5_cpu
+
+BASH
+
+ENTRYPOINT ["/app/entrypoint.sh"]
