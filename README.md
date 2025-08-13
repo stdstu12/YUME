@@ -125,14 +125,11 @@ We learned and reused code from the following projects:
 If you use Yume for your research, please cite our paper:
 
 ```bibtex
-@misc{mao2025yumeinteractiveworldgeneration,
-      title={Yume: An Interactive World Generation Model}, 
-      author={Xiaofeng Mao and Shaoheng Lin and Zhen Li and Chuanhao Li and Wenshuo Peng and Tong He and Jiangmiao Pang and Mingmin Chi and Yu Qiao and Kaipeng Zhang},
-      year={2025},
-      eprint={2507.17744},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2507.17744}, 
+@article{mao2025yume,
+  title={Yume: An Interactive World Generation Model},
+  author={Mao, Xiaofeng and Lin, Shaoheng and Li, Zhen and Li, Chuanhao and Peng, Wenshuo and He, Tong and Pang, Jiangmiao and Chi, Mingmin and Qiao, Yu and Zhang, Kaipeng},
+  journal={arXiv preprint arXiv:2507.17744},
+  year={2025}
 }
 
 ```
