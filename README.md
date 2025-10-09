@@ -1,3 +1,35 @@
+
+<div align="right">
+  <details>
+    <summary >🌐 Language</summary>
+    <div>
+      <div align="center">
+        <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=en">English</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=zh-CN">简体中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=zh-TW">繁體中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=ja">日本語</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=ko">한국어</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=hi">हिन्दी</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=th">ไทย</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=fr">Français</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=de">Deutsch</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=es">Español</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=it">Italiano</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=ru">Русский</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=pt">Português</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=nl">Nederlands</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=pl">Polski</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=ar">العربية</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=fa">فارسی</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=tr">Türkçe</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=vi">Tiếng Việt</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=id">Bahasa Indonesia</a>
+        | <a href="https://openaitx.github.io/view.html?user=stdstu12&project=YUME&lang=as">অসমীয়া</
+      </div>
+    </div>
+  </details>
+</div>
+
 <div align="center">
 <img src=assets/yume.png width="20%"/>
 </div>
