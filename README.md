@@ -40,7 +40,7 @@ You need to run `pip install .` after each code modification, or alternatively, 
 For image-to-video generation, we use `--jpg_dir="./jpg"` to specify the input image directory and `--caption_path="./caption.txt"` to provide text conditioning inputs, where each line corresponds to a generation instance controlling 2-second video output.
 ```bash
 # Download the model weights and place them in Path_To_Yume.
-bash scripts/inference/sample_jpg.sh 
+bash scripts/inference/sample_image.sh 
 ```
 We also consider generating videos using the data from `./val`, where `--test_data_dir="./val"` specifies the location of the example data.
 ```bash
