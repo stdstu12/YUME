@@ -1,0 +1,33 @@
+2025-09-26 23:39:13 [INFO] webapp - ==== Runtime Env ====
+2025-09-26 23:39:13 [INFO] webapp - Python: 3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]
+2025-09-26 23:39:13 [INFO] webapp - OS: Windows 10.0.26100
+2025-09-26 23:39:13 [INFO] webapp - torch: 2.5.0+cu121 (cuda=True) | transformers: 4.46.1 | diffusers: 0.32.0
+2025-09-26 23:39:13 [INFO] webapp - Device: NVIDIA GeForce RTX 4090 Laptop GPU
+2025-09-26 23:39:13 [INFO] webapp - Log file: C:\Users\23154\Downloads\YUME-main-1\YUME-main\logs\webapp_20250926_233913.log
+2025-09-26 23:39:13 [INFO] webapp - [LAUNCH] 即将启动：http://127.0.0.1:7666
+2025-09-26 23:39:13 [INFO] webapp - [LAUNCH] Log file: C:\Users\23154\Downloads\YUME-main-1\YUME-main\logs\webapp_20250926_233913.log
+2025-09-26 23:39:59 [INFO] webapp - [load_wan] start (BF16, DEVICE_ID=0)
+2025-09-26 23:39:59 [INFO] webapp - [device] checking CUDA…
+2025-09-26 23:39:59 [INFO] webapp - [device] using cuda:0 - NVIDIA GeForce RTX 4090 Laptop GPU
+2025-09-26 23:43:05 [INFO] webapp - [load_wan] OK in 186.55s
+2025-09-26 23:44:17 [ERROR] webapp - [api_generate_long] failed: index 0 is out of bounds for dimension 2 with size 0
+Traceback (most recent call last):
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\webapp_single_gpu.py", line 1153, in api_generate_long
+    out_path, final_prompt = long_generate(g)
+                             ^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\utils\_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\webapp_single_gpu.py", line 767, in long_generate
+    noise_pred = transformer(latent_model_input, t=tvec,latent_frame_zero = latent_frame_zero, **arg_c)[0]
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\nn\modules\module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\nn\modules\module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\wan23\modules\model.py", line 614, in forward
+    u_1 = self.patch_embedding(u1[:,:,0].unsqueeze(2))
+                               ~~^^^^^^^
+IndexError: index 0 is out of bounds for dimension 2 with size 0

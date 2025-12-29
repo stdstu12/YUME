@@ -1,0 +1,24 @@
+2025-09-22 21:05:09 [INFO] webapp - ==== Runtime Env ====
+2025-09-22 21:05:09 [INFO] webapp - Python: 3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]
+2025-09-22 21:05:09 [INFO] webapp - OS: Windows 10.0.26100
+2025-09-22 21:05:09 [INFO] webapp - torch: 2.5.0+cu121 (cuda=True) | transformers: 4.46.1 | diffusers: 0.32.0
+2025-09-22 21:05:09 [INFO] webapp - Device: NVIDIA GeForce RTX 4090 Laptop GPU
+2025-09-22 21:05:09 [INFO] webapp - Log file: C:\Users\23154\Downloads\YUME-main-1\YUME-main\logs\webapp_20250922_210509.log
+2025-09-22 21:05:09 [INFO] webapp - [LAUNCH] 即将启动：http://127.0.0.1:7666
+2025-09-22 21:05:09 [INFO] webapp - [LAUNCH] Log file: C:\Users\23154\Downloads\YUME-main-1\YUME-main\logs\webapp_20250922_210509.log
+2025-09-22 21:05:15 [INFO] webapp - [load_wan] start (BF16, DEVICE_ID=0)
+2025-09-22 21:05:15 [INFO] webapp - [device] checking CUDA…
+2025-09-22 21:05:15 [INFO] webapp - [device] using cuda:0 - NVIDIA GeForce RTX 4090 Laptop GPU
+2025-09-22 21:08:35 [INFO] webapp - [load_wan] OK in 199.59s
+2025-09-22 21:22:23 [ERROR] webapp - [api_generate_long] failed: Sizes of tensors must match except in dimension 1. Expected size 704 but got size 784 for tensor number 1 in the list.
+Traceback (most recent call last):
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\webapp_single_gpu.py", line 950, in api_generate_long
+    refine_from_image=bool(data.get("refine_from_image")),
+                         ^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\utils\_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\webapp_single_gpu.py", line 618, in long_generate
+    transformer = transformer.to("cuda")
+                     ^^^^^^^^^^^^^^^^^^^
+RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 704 but got size 784 for tensor number 1 in the list.

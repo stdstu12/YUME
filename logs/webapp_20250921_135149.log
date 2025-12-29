@@ -1,0 +1,78 @@
+2025-09-21 13:51:49 [INFO] webapp - ==== Runtime Env ====
+2025-09-21 13:51:49 [INFO] webapp - Python: 3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]
+2025-09-21 13:51:49 [INFO] webapp - OS: Windows 10.0.26100
+2025-09-21 13:51:49 [INFO] webapp - torch: 2.5.0+cu121 (cuda=True) | transformers: 4.46.1 | diffusers: 0.32.0
+2025-09-21 13:51:49 [INFO] webapp - Device: NVIDIA GeForce RTX 4090 Laptop GPU
+2025-09-21 13:51:49 [INFO] webapp - Log file: C:\Users\23154\Downloads\YUME-main-1\YUME-main\logs\webapp_20250921_135149.log
+2025-09-21 13:51:49 [INFO] webapp - [LAUNCH] 即将启动：http://127.0.0.1:7665
+2025-09-21 13:51:49 [INFO] webapp - [LAUNCH] Log file: C:\Users\23154\Downloads\YUME-main-1\YUME-main\logs\webapp_20250921_135149.log
+2025-09-21 13:51:54 [INFO] webapp - [load_wan] start (BF16, DEVICE_ID=0)
+2025-09-21 13:51:54 [INFO] webapp - [device] checking CUDA…
+2025-09-21 13:51:54 [INFO] webapp - [device] using cuda:0 - NVIDIA GeForce RTX 4090 Laptop GPU
+2025-09-21 13:55:47 [INFO] webapp - [load_wan] OK in 232.59s
+2025-09-21 15:21:57 [ERROR] webapp - [api_generate_long] failed: CUDA error: out of memory
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+Traceback (most recent call last):
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\webapp_single_gpu.py", line 817, in api_generate_long
+    output_dir=str(data.get("output_dir") or OUTPUT_DIR),
+                         ^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\utils\_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\webapp_single_gpu.py", line 472, in long_generate
+    latent_model_input = [_to_bf16(latent)]
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\wan23\modules\vae2_2.py", line 1044, in decode
+    self.model.decode(u.unsqueeze(0),
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\wan23\modules\vae2_2.py", line 824, in decode
+    out = self.decoder(
+          ^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\nn\modules\module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\nn\modules\module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\wan23\modules\vae2_2.py", line 700, in forward
+    x = layer(x, feat_cache, feat_idx, first_chunk)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\nn\modules\module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\nn\modules\module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\wan23\modules\vae2_2.py", line 492, in forward
+    x_main = module(x_main, feat_cache, feat_idx)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\nn\modules\module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\nn\modules\module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\wan23\modules\vae2_2.py", line 230, in forward
+    x = layer(x, feat_cache[idx])
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\nn\modules\module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\nn\modules\module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\wan23\modules\vae2_2.py", line 42, in forward
+    return super().forward(x)
+           ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\nn\modules\conv.py", line 725, in forward
+    return self._conv_forward(input, self.weight, self.bias)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\nn\modules\conv.py", line 720, in _conv_forward
+    return F.conv3d(
+           ^^^^^^^^^
+RuntimeError: CUDA error: out of memory
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+

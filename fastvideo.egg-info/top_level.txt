@@ -1,0 +1,14 @@
+ADD
+Yume-5B-720P
+build
+demo
+fastvideo
+flagged
+hyvideo
+jpg
+logs
+outputs
+slurm_output
+test_video
+wan
+wan23

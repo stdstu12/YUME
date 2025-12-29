@@ -1,0 +1,5 @@
+Start Frame: 1216
+End Frame: 1262
+Duration: 47 frames
+Keys: W+A
+Mouse: ·

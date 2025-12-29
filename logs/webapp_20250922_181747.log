@@ -1,0 +1,12 @@
+2025-09-22 18:17:47 [INFO] webapp - ==== Runtime Env ====
+2025-09-22 18:17:47 [INFO] webapp - Python: 3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]
+2025-09-22 18:17:47 [INFO] webapp - OS: Windows 10.0.26100
+2025-09-22 18:17:47 [INFO] webapp - torch: 2.5.0+cu121 (cuda=True) | transformers: 4.46.1 | diffusers: 0.32.0
+2025-09-22 18:17:47 [INFO] webapp - Device: NVIDIA GeForce RTX 4090 Laptop GPU
+2025-09-22 18:17:47 [INFO] webapp - Log file: C:\Users\23154\Downloads\YUME-main-1\YUME-main\logs\webapp_20250922_181747.log
+2025-09-22 18:17:48 [INFO] webapp - [LAUNCH] 即将启动：http://127.0.0.1:7666
+2025-09-22 18:17:48 [INFO] webapp - [LAUNCH] Log file: C:\Users\23154\Downloads\YUME-main-1\YUME-main\logs\webapp_20250922_181747.log
+2025-09-22 18:19:41 [INFO] webapp - [load_wan] start (BF16, DEVICE_ID=0)
+2025-09-22 18:19:41 [INFO] webapp - [device] checking CUDA…
+2025-09-22 18:19:41 [INFO] webapp - [device] using cuda:0 - NVIDIA GeForce RTX 4090 Laptop GPU
+2025-09-22 18:23:00 [INFO] webapp - [load_wan] OK in 199.02s

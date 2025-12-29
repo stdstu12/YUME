@@ -1,0 +1,9 @@
+vae_path: "./ckpts/hunyuan-video-i2v-720p/vae"
+video_url_files: "./assets/demo/i2v_lora/train_dataset/meta_file.list"
+output_base_dir: "./output"
+sample_n_frames: 129
+target_size: 
+  - 480
+  - 848
+enable_multi_aspect_ratio: False
+use_stride: True

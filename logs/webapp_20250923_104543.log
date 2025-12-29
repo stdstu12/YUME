@@ -1,0 +1,30 @@
+2025-09-23 10:45:43 [INFO] webapp - ==== Runtime Env ====
+2025-09-23 10:45:43 [INFO] webapp - Python: 3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]
+2025-09-23 10:45:43 [INFO] webapp - OS: Windows 10.0.26100
+2025-09-23 10:45:43 [INFO] webapp - torch: 2.5.0+cu121 (cuda=True) | transformers: 4.46.1 | diffusers: 0.32.0
+2025-09-23 10:45:43 [INFO] webapp - Device: NVIDIA GeForce RTX 4090 Laptop GPU
+2025-09-23 10:45:43 [INFO] webapp - Log file: C:\Users\23154\Downloads\YUME-main-1\YUME-main\logs\webapp_20250923_104543.log
+2025-09-23 10:45:44 [INFO] webapp - [LAUNCH] 即将启动：http://127.0.0.1:7666
+2025-09-23 10:45:44 [INFO] webapp - [LAUNCH] Log file: C:\Users\23154\Downloads\YUME-main-1\YUME-main\logs\webapp_20250923_104543.log
+2025-09-23 10:46:26 [INFO] webapp - [load_wan] start (BF16, DEVICE_ID=0)
+2025-09-23 10:46:26 [INFO] webapp - [device] checking CUDA…
+2025-09-23 10:46:26 [INFO] webapp - [device] using cuda:0 - NVIDIA GeForce RTX 4090 Laptop GPU
+2025-09-23 10:49:47 [INFO] webapp - [load_wan] OK in 201.23s
+2025-09-23 10:53:11 [ERROR] webapp - [api_generate_long] failed: The size of tensor a (78) must match the size of tensor b (60) at non-singleton dimension 3
+Traceback (most recent call last):
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\webapp_single_gpu.py", line 1035, in api_generate_long
+    out_path, final_prompt = long_generate(g)
+                             ^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\utils\_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\webapp_single_gpu.py", line 609, in long_generate
+    gen_ret = wan.generate(
+              ^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\wan23\textimage2video.py", line 217, in generate
+    return self.i2v(
+           ^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\wan23\textimage2video.py", line 469, in i2v
+    latent = (1. - mask2[0]) * z[0] + mask2[0] * latent
+             ~~~~~~~~~~~~~~~~^~~~~~
+RuntimeError: The size of tensor a (78) must match the size of tensor b (60) at non-singleton dimension 3

@@ -1,0 +1,29 @@
+2025-12-26 10:13:49 [INFO] webapp - ==== Runtime Env ====
+2025-12-26 10:13:49 [INFO] webapp - Python: 3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]
+2025-12-26 10:13:49 [INFO] webapp - OS: Windows 10.0.26100
+2025-12-26 10:13:49 [INFO] webapp - torch: 2.5.0+cu121 (cuda=True) | transformers: 4.46.1 | diffusers: 0.32.0
+2025-12-26 10:13:49 [INFO] webapp - Device: NVIDIA GeForce RTX 4090 Laptop GPU
+2025-12-26 10:13:49 [INFO] webapp - Log file: C:\Users\23154\Downloads\YUME-main-1\YUME-main\logs\webapp_20251226_101349.log
+2025-12-26 10:13:49 [INFO] webapp - [LAUNCH] 即将启动：http://127.0.0.1:7666
+2025-12-26 10:13:49 [INFO] webapp - [LAUNCH] Log file: C:\Users\23154\Downloads\YUME-main-1\YUME-main\logs\webapp_20251226_101349.log
+2025-12-26 10:14:36 [INFO] webapp - [load_wan] start (BF16, DEVICE_ID=0)
+2025-12-26 10:14:36 [INFO] webapp - [device] checking CUDA…
+2025-12-26 10:14:36 [INFO] webapp - [device] using cuda:0 - NVIDIA GeForce RTX 4090 Laptop GPU
+2025-12-26 10:17:40 [INFO] webapp - [load_wan] OK in 183.39s
+2025-12-26 10:18:19 [ERROR] webapp - [api_generate_long] failed: 首轮生成必须提供 jpg_path（单张图片路径）。若要续帧，请勾选"继续续帧"。
+Traceback (most recent call last):
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\webapp_single_gpu.py", line 1442, in api_generate_long
+    raise ValueError("首轮生成必须提供 jpg_path（单张图片路径）。若要续帧，请勾选\"继续续帧\"。")
+ValueError: 首轮生成必须提供 jpg_path（单张图片路径）。若要续帧，请勾选"继续续帧"。
+2025-12-26 10:20:13 [ERROR] webapp - [api_generate_long] failed: 'list' object has no attribute 'clone'
+Traceback (most recent call last):
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\webapp_single_gpu.py", line 1444, in api_generate_long
+    out_path, final_prompt = long_generate(g)
+                             ^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\.venv\Lib\site-packages\torch\utils\_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\23154\Downloads\YUME-main-1\YUME-main\webapp_single_gpu.py", line 768, in long_generate
+    latent = noise.clone()
+             ^^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'clone'
