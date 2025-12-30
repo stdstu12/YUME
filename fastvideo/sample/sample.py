@@ -8,9 +8,8 @@ import time
 import glob
 import gc
 import torch
-from wan22.modules.model import WanModel as WanModel_ori
-import wan23
-from wan23.configs import WAN_CONFIGS
+import wan
+from wan.configs import WAN_CONFIGS
 from decord import VideoReader, cpu
 from packaging import version as pver
 from scipy.spatial.transform import Rotation
@@ -55,88 +54,6 @@ from fastvideo.utils.parallel_states import (destroy_sequence_parallel_group,
                                              initialize_sequence_parallel_state
                                              )
 import torch.distributed as dist
-
-import numpy as np
-import torch
-import torchvision.transforms as T
-from decord import VideoReader, cpu
-from PIL import Image
-from torchvision.transforms.functional import InterpolationMode
-from transformers import AutoModel, AutoTokenizer
-
-IMAGENET_MEAN = (0.485, 0.456, 0.406)
-IMAGENET_STD = (0.229, 0.224, 0.225)
-
-def build_transform(input_size):
-    MEAN, STD = IMAGENET_MEAN, IMAGENET_STD
-    transform = T.Compose([
-        T.Lambda(lambda img: img.convert('RGB') if img.mode != 'RGB' else img),
-        T.Resize((input_size, input_size), interpolation=InterpolationMode.BICUBIC),
-        T.ToTensor(),
-        T.Normalize(mean=MEAN, std=STD)
-    ])
-    return transform
-
-def find_closest_aspect_ratio(aspect_ratio, target_ratios, width, height, image_size):
-    best_ratio_diff = float('inf')
-    best_ratio = (1, 1)
-    area = width * height
-    for ratio in target_ratios:
-        target_aspect_ratio = ratio[0] / ratio[1]
-        ratio_diff = abs(aspect_ratio - target_aspect_ratio)
-        if ratio_diff < best_ratio_diff:
-            best_ratio_diff = ratio_diff
-            best_ratio = ratio
-        elif ratio_diff == best_ratio_diff:
-            if area > 0.5 * image_size * image_size * ratio[0] * ratio[1]:
-                best_ratio = ratio
-    return best_ratio
-
-def dynamic_preprocess(image, min_num=1, max_num=12, image_size=448, use_thumbnail=False):
-    orig_width, orig_height = image.size
-    aspect_ratio = orig_width / orig_height
-
-    # calculate the existing image aspect ratio
-    target_ratios = set(
-        (i, j) for n in range(min_num, max_num + 1) for i in range(1, n + 1) for j in range(1, n + 1) if
-        i * j <= max_num and i * j >= min_num)
-    target_ratios = sorted(target_ratios, key=lambda x: x[0] * x[1])
-
-    # find the closest aspect ratio to the target
-    target_aspect_ratio = find_closest_aspect_ratio(
-        aspect_ratio, target_ratios, orig_width, orig_height, image_size)
-
-    # calculate the target width and height
-    target_width = image_size * target_aspect_ratio[0]
-    target_height = image_size * target_aspect_ratio[1]
-    blocks = target_aspect_ratio[0] * target_aspect_ratio[1]
-
-    # resize the image
-    resized_img = image.resize((target_width, target_height))
-    processed_images = []
-    for i in range(blocks):
-        box = (
-            (i % (target_width // image_size)) * image_size,
-            (i // (target_width // image_size)) * image_size,
-            ((i % (target_width // image_size)) + 1) * image_size,
-            ((i // (target_width // image_size)) + 1) * image_size
-        )
-        # split the image
-        split_img = resized_img.crop(box)
-        processed_images.append(split_img)
-    assert len(processed_images) == blocks
-    if use_thumbnail and len(processed_images) != 1:
-        thumbnail_img = image.resize((image_size, image_size))
-        processed_images.append(thumbnail_img)
-    return processed_images
-
-def load_image(image_file, input_size=448, max_num=12):
-    image = Image.open(image_file).convert('RGB')
-    transform = build_transform(input_size=input_size)
-    images = dynamic_preprocess(image, image_size=input_size, use_thumbnail=True, max_num=max_num)
-    pixel_values = [transform(image) for image in images]
-    pixel_values = torch.stack(pixel_values)
-    return pixel_values
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.31.0")
@@ -571,9 +488,9 @@ def mp4_data(root_dir=None):
     vid_meta = []
     dataset_ddp = []
     vid_meta = []
-    img_size = (704,1280)
-    height = 704
-    width = 1280
+    img_size = (544,960)
+    height = 544
+    width = 960
     for subdir in glob.glob(os.path.join(root_dir, '*/')):
         for mp4_path in glob.glob(os.path.join(subdir, '*.mp4')):
             base_name = os.path.splitext(os.path.basename(mp4_path))[0]
@@ -715,7 +632,7 @@ def create_scaled_videos(folder_path, total_frames=33, H1=256, W1=256):
             )[0]
             
             video_tensor[:, 0] = (resized_frame - 0.5)*2
-            video_list.append((video_tensor.permute(1,0,2,3),base_name,img_path))
+            video_list.append((video_tensor.permute(1,0,2,3),base_name))
             
         except Exception as e:
             print(f"Error {img_path}: {e}")
@@ -724,7 +641,6 @@ def create_scaled_videos(folder_path, total_frames=33, H1=256, W1=256):
 
 def sample_one(
     transformer,
-    transformer_ori,
     not_apply_cfg_solver,
     device,
     rand_num_img=0.6,
@@ -739,8 +655,6 @@ def sample_one(
     world_size=None,
     image_sample=None,
     caption_path=None,
-    camption_model=None,
-    tokenizer=None,
 ):
     torch.cuda.empty_cache()
     torch.cuda.empty_cache()
@@ -756,21 +670,12 @@ def sample_one(
     )
     if image_sample:
         # Read image files and caption.txt (for text conditioning).
-        pixel_values_vid, videoid, img_path = dataset_ddp[index]
-        
-        # set the max number of tiles in `max_num`
-        pixel_values = load_image(img_path, max_num=12).to(torch.bfloat16).to(device)
-        generation_config = dict(max_new_tokens=1024, do_sample=True)
-        # single-image single-round conversation (单图单轮对话)
-        question = '<image>\nWe want to generate a video using this prompt: \"'+"The sun comes out."+'\". Please modify and refine this prompt for the video of this image (<image>). Note that "The sun comes out." must appear and revolve around the extension. Don\'t split it into points; just write a paragraph directly'
-        #'<image>\nWe want to generate a video using this image. Please generate a prompt word for the video of this image. Don\'t split it into points; just write a paragraph directly' 
-        response = camption_model.chat(tokenizer, pixel_values, question, generation_config)
-        
+        pixel_values_vid, videoid = dataset_ddp[index]
         pixel_values_ref_img = pixel_values_vid[0,:,:,:]
         caption = []
         with open(caption_path, 'r', encoding='utf-8') as file:
             for line in file:
-                caption.append(line.rstrip('\n') + response )
+                caption.append(line.rstrip('\n'))
         main_print(
             f"  Caption: {str(caption)}")
         sample_num = len(caption)
@@ -781,7 +686,7 @@ def sample_one(
         pixel_values_vid, pixel_values_ref_img,caption,videoid = dataset_ddp[index]
         caption = list(caption)
         caption_ori = caption[0]
-        caption[0] = caption[0] + "Actual distance moved:4 at 100 meters per second. Angular change rate (turn speed):4. View rotation speed:4"
+        caption[0] = caption[0] + "Actual distance moved:4.3697374288015297 at 100 meters per second.Angular change rate (turn speed):4.520279996588001.View rotation speed:4.14601429683874179."
         caption.append(caption[0])
         caption.append(caption[0])
         main_print(
@@ -791,11 +696,8 @@ def sample_one(
     # Generate diverse output videos from identical input conditions
     repeat_nums = 1
     for repeat_num in range(repeat_nums):
-        latent_frame_zero = 8
-        frame_zero = 32
-
         # i2v or v2v
-        rand_num_img = 0.6
+        rand_num_img = 0.6        
 
         with torch.no_grad():
             pixel_values_vid = pixel_values_vid.squeeze().permute(1,0,2,3).contiguous().to(device)
@@ -803,43 +705,53 @@ def sample_one(
             latents = pixel_values_vid
 
         model_input = latents
-
         if rand_num_img < 0.4:
             model_input = model_input[:,:33]
-
         # When the input is an image, extend it to 16 frames
         model_input = torch.cat([model_input[:,0].unsqueeze(1).repeat(1,16,1,1), model_input[:,:33]],dim=1)
+
         model_input_de = model_input.squeeze()
 
-        frame = model_input.shape[1]
-
-        model_input = torch.cat([wan_i2v.vae.encode([model_input.to(device)[:,:-32].to(device)])[0], \
-                                 wan_i2v.vae.encode([model_input.to(device)[:,-32:].to(device)])[0]],dim=1) 
-
-        latents = model_input
-        max_area=704 * 1280
-
-        img =  model_input[:,:-latent_frame_zero]
-
-        #print(model_input.shape,img.shape,"zzzza0h0hh08")
+        img = tensor_to_pil(pixel_values_ref_img)
 
         with torch.no_grad():
-            arg_c, arg_null, noise, mask2, img = wan_i2v.generate(
-                        caption[0],
-                        frame_num=frame,
-                        max_area=max_area,
-                        latent_frame_zero=latent_frame_zero,
-                        img=img)
-            
-        #print(img[0].shape,"imgimgimgimgimgimg")
-        sample_num = 15
+            # Jump to ./wan/image2video.py
+            latent_model_input, timestep, arg_c, noise, model_input, clip_context, arg_null = wan_i2v.generate(
+                model_input,
+                device,
+                caption[0],
+                img,
+                max_area=544*960,
+                frame_num=model_input.shape[1],
+                shift=17,
+                sample_solver="unipc",
+                sampling_steps=50,
+                guide_scale=5.0,
+                seed=None,
+                rand_num_img=rand_num_img,
+                offload_model=False,
+                flag_sample=True, )
+
+        frame_zero = 32
+        latent_frame_zero = (frame_zero-1)//4 + 1
+
         if step % 1 == 0:
+            
             video_all = []
             for step_sample in range(sample_num):
-
+                
                 c1,f1,h1,w1 = model_input.shape
                 sample_step = num_euler_timesteps
-                sampling_sigmas = get_sampling_sigmas(sample_step, 7.0)
+                sampling_sigmas = get_sampling_sigmas(sample_step, 3.0)
+
+                if step_sample > 0:
+                    c1,f1,h1,w1 = model_input_1.shape
+
+                # kernel_H = torch.tensor([0.1, 0.8, 0.1], device='cpu')  
+                # kernel_W = torch.tensor([0.2, 0.6, 0.2], device='cpu')  
+                # A_op = LinearOperator2D(kernel_H, kernel_W, h1, w1, device=device)
+                # A_op_1 = LinearOperator2D(kernel_H, kernel_W, h1*8, w1*8, device=device)
+
 
                 if step_sample > 0:
                     noise = torch.randn_like(model_input_1)
@@ -847,167 +759,78 @@ def sample_one(
                 else:
                     latent = noise
 
+
                 import time
                 start_time = time.time()
 
-                latent = (1. - mask2[0]) * img[0]  + mask2[0] * latent
-                
                 with torch.no_grad():
                     with torch.autocast("cuda", dtype=torch.bfloat16):
 
                         for i in range(sample_step):
-                            print("297qye9wg9wgsf97eswgf98983232", step_sample)
                             latent_model_input = [latent]
-
                             timestep = [sampling_sigmas[i]*1000]
                             timestep = torch.tensor(timestep).to(device)
-                            temp_ts = (mask2[0][0][:-latent_frame_zero, ::2, ::2] ).flatten()
-                            temp_ts = torch.cat([
-                                temp_ts,
-                                temp_ts.new_ones(arg_c['seq_len'] - temp_ts.size(0)) * timestep
-                            ])
-                            timestep = temp_ts.unsqueeze(0)
-                            
-                            if True: #not (step_sample>2 and i>0):
-                                noise_pred_cond = transformer(latent_model_input, latent_frame_zero=latent_frame_zero, t=timestep, **arg_c)[0]
-                                #noise_pred_uncond = transformer(latent_model_input, t=timestep, **arg_null)[0]
 
-                                #noise_pred_cond = noise_pred_uncond + 5.0*(noise_pred_cond - noise_pred_uncond)
+                            noise_pred_cond, _ = transformer(\
+                                latent_model_input, t=timestep, rand_num_img=rand_num_img, **arg_c)
+                            noise_pred_uncond, _ = transformer(\
+                                latent_model_input, t=timestep, rand_num_img=rand_num_img, **arg_null)
 
-                                if i+1 == sample_step:
-                                    temp_x0 = latent[:,-latent_frame_zero:,:,:] + (0-sampling_sigmas[i])*noise_pred_cond[:,-latent_frame_zero:,:,:]
-                                else:
-                                    temp_x0 = latent[:,-latent_frame_zero:,:,:] + (sampling_sigmas[i+1]-sampling_sigmas[i])*noise_pred_cond[:,-latent_frame_zero:,:,:]
+                            noise_pred_cond = noise_pred_uncond + 5.0*(noise_pred_cond - noise_pred_uncond)
+
+                            if i+1 == sample_step:
+                                temp_x0 = latent[:,-latent_frame_zero:,:,:] + (0-sampling_sigmas[i])*noise_pred_cond[:,-latent_frame_zero:,:,:]
                             else:
-                                timestep = [sampling_sigmas[i]*1000]
-                                timestep = torch.tensor(timestep).to(device)
-                            
-                                noise_pred_cond = transformer([latent_model_input[0][:,-latent_frame_zero:,:,:]], latent_frame_zero=latent_frame_zero, t=timestep, flag=False, **arg_c)[0]
-                                #noise_pred_uncond = transformer(latent_model_input, t=timestep, **arg_null)[0]
-                                #noise_pred_cond = noise_pred_uncond + 5.0*(noise_pred_cond - noise_pred_uncond)
+                                temp_x0 = latent[:,-latent_frame_zero:,:,:] + (sampling_sigmas[i+1]-sampling_sigmas[i])*noise_pred_cond[:,-latent_frame_zero:,:,:]
 
-                                if i+1 == sample_step:
-                                    temp_x0 = latent[:,-latent_frame_zero:,:,:] + (0-sampling_sigmas[i])*noise_pred_cond[:,-latent_frame_zero:,:,:]
-                                else:
-                                    temp_x0 = latent[:,-latent_frame_zero:,:,:] + (sampling_sigmas[i+1]-sampling_sigmas[i])*noise_pred_cond[:,-latent_frame_zero:,:,:]
-                                
-                                
                             index1 = min(sample_step-1,i+1)
                             if step_sample > 0:
-                                latent = torch.cat([model_input_1[:,:-latent_frame_zero,:,:], temp_x0], dim=1)
+                                latent = torch.cat([noise[:,:-latent_frame_zero,:,:]*sampling_sigmas[index1]+(1-sampling_sigmas[index1])*model_input_1[:,:-latent_frame_zero,:,:], temp_x0], dim=1)
                             else:
-                                latent = torch.cat([model_input[:,:-latent_frame_zero,:,:], temp_x0], dim=1)
+                                latent = torch.cat([noise[:,:-latent_frame_zero,:,:]*sampling_sigmas[index1]+(1-sampling_sigmas[index1])*model_input[:,:-latent_frame_zero,:,:], temp_x0], dim=1)
+                
 
-#                 kernel_H = torch.tensor([0.1, 0.8, 0.1], device='cpu')  
-#                 kernel_W = torch.tensor([0.2, 0.6, 0.2], device='cpu')  
-#                 A_op = LinearOperator2D(kernel_H, kernel_W, h1, w1, device=device)
-#                 A_op_1 = LinearOperator2D(kernel_H, kernel_W, h1*8, w1*8, device=device)
+                # latent_ori = latent
+                # C,F,H,W = noise.shape
+                # latent = noise
+                # with torch.no_grad():
+                #     with torch.autocast("cuda", dtype=torch.bfloat16):
+                        # for i in range(50):
+                        #     timestep = [sampling_sigmas[i]*1000]
+                        #     timestep = torch.tensor(timestep).to(device)
+                        #     if i <= 4:
+                        #         latent_ori_noise = sampling_sigmas[i]*noise+(1-sampling_sigmas[i])*latent_ori
+                        #         A_pinv_Ax = A_op.A_inv(A_op.A(latent_ori_noise.view(-1, H, W))).view_as(latent_ori_noise)
+                        #         I_A_A_inv = project_null_space(latent, A_op)
+                        #         latent = A_pinv_Ax + I_A_A_inv
 
-#                 sampling_sigmas = get_sampling_sigmas(15, 5.0)
-#                 C,F,H,W = noise.shape
-#                 latent = (1. - mask2[0]) * img[0]  + mask2[0] * latent
-#                 latent_ori = latent
-
-#                 with torch.no_grad():
-#                     with torch.autocast("cuda", dtype=torch.bfloat16):
-#                         for i in range(15):
-#                             timestep = [sampling_sigmas[i]*1000]
-#                             timestep = torch.tensor(timestep).to(device)
-#                             temp_ts = (mask2[0][0][:-latent_frame_zero, ::2, ::2] ).flatten()
-#                             temp_ts = torch.cat([
-#                                 temp_ts,
-#                                 temp_ts.new_ones(arg_c['seq_len'] - temp_ts.size(0)) * timestep
-#                             ])
-#                             timestep = temp_ts.unsqueeze(0)
-
-#                             if i <= 3:
-#                                 latent_ori_noise = sampling_sigmas[i]*noise+(1-sampling_sigmas[i])*latent_ori
-#                                 latent_ori_noise = (1. - mask2[0]) * img[0]  + mask2[0] * latent_ori_noise
-#                                 A_pinv_Ax = A_op.A_inv(A_op.A(latent_ori_noise.view(-1, H, W))).view_as(latent_ori_noise)
-#                                 I_A_A_inv = project_null_space(latent, A_op)
-#                                 latent = A_pinv_Ax + I_A_A_inv
-
-#                             latent_model_input = [latent]
-
-#                             noise_pred_cond = transformer_ori(latent_model_input, t=timestep,  **arg_c)[0]
-#                             noise_pred_uncond = transformer_ori(latent_model_input, t=timestep, **arg_null)[0]
-#                             noise_pred_cond = noise_pred_uncond + 5.0*(noise_pred_cond - noise_pred_uncond)
+                        #     latent_model_input = [latent]
                             
-#                             if i+1 == 15:
-#                                 temp_x0 = latent[:,-latent_frame_zero:,:,:] + (0-sampling_sigmas[i])*noise_pred_cond[:,-latent_frame_zero:,:,:]
-#                             else:
-#                                 temp_x0 = latent[:,-latent_frame_zero:,:,:] + (sampling_sigmas[i+1]-sampling_sigmas[i])*noise_pred_cond[:,-latent_frame_zero:,:,:]
-
-#                             index1 = min(sample_step-1,i+1)
-#                             if step_sample > 0:
-#                                 latent = torch.cat([model_input_1[:,:-latent_frame_zero,:,:], temp_x0], dim=1)
-#                             else:
-#                                 latent = torch.cat([model_input[:,:-latent_frame_zero,:,:], temp_x0], dim=1)
-#                             print(img[0].shape,latent.shape,"zzzzzzzzzzzzzzcasj9j")
-#                             latent = (1. - mask2[0]) * img[0]  + mask2[0] * latent
-
-
-                # if step_sample > 0:
-                #     latent = torch.cat([model_input_1[:,:1,:,:], noise[:,1:]], dim=1)
-                # else:
-                #     latent = torch.cat([model_input[:,:1,:,:], noise[:,1:]], dim=1)
-
-#                 with torch.no_grad():
-#                     with torch.autocast("cuda", dtype=torch.bfloat16):
-#                         for i in range(4, 50):
-#                             timestep = [sampling_sigmas[i]*1000]
-#                             timestep = torch.tensor(timestep).to(device)
-#                             # temp_ts = (mask2[0][0][:-latent_frame_zero, ::2, ::2] ).flatten()
-#                             # temp_ts = torch.cat([
-#                             #     temp_ts,
-#                             #     temp_ts.new_ones(arg_c['seq_len'] - temp_ts.size(0)) * timestep
-#                             # ])
-#                             # timestep = temp_ts.unsqueeze(0)
-
-#                             # if i <= 4:
-#                             #     latent_ori_noise = sampling_sigmas[i]*noise+(1-sampling_sigmas[i])*latent_ori
-#                             #     A_pinv_Ax = A_op.A_inv(A_op.A(latent_ori_noise.view(-1, H, W))).view_as(latent_ori_noise)
-#                             #     I_A_A_inv = project_null_space(latent, A_op)
-#                             #     latent = A_pinv_Ax + I_A_A_inv
-
-#                             latent_model_input = [latent]
-
-#                             noise_pred_cond = transformer_ori(latent_model_input, t=timestep,  **arg_c)[0]
-#                             noise_pred_uncond = transformer_ori(latent_model_input, t=timestep, **arg_null)[0]
-#                             noise_pred_cond = noise_pred_uncond + 5.0*(noise_pred_cond - noise_pred_uncond)
                             
-#                             if i+1 == 50:
-#                                 latent = latent + (0-sampling_sigmas[i])*noise_pred_cond                            
-#                             else:
-#                                 latent = latent + (sampling_sigmas[i+1]-sampling_sigmas[i])*noise_pred_cond
-    
-#                             index1 = min(49,i+1)
-#                             if step_sample > 0:
-#                                 model_input_2 = noise*sampling_sigmas[index1]+(1-sampling_sigmas[index1])*model_input_1
-#                                 latent = torch.cat([model_input_2[:,:-latent_frame_zero,:,:], latent[:,-latent_frame_zero:]], dim=1)
-#                             else:
-#                                 model_input_3 = noise*sampling_sigmas[index1]+(1-sampling_sigmas[index1])*model_input
-#                                 latent = torch.cat([model_input_3[:,:-latent_frame_zero,:,:], latent[:,-latent_frame_zero:]], dim=1)
-                                
-# #                             if i+1 == 50:
-# #                                 temp_x0 = latent[:,1:,:,:] + (0-sampling_sigmas[i])*noise_pred_cond[:,1:,:,:]
-# #                             else:
-# #                                 temp_x0 = latent[:,1:,:,:] + (sampling_sigmas[i+1]-sampling_sigmas[i])*noise_pred_cond[:,1:,:,:]
-
-# #                             index1 = min(49,i+1)
-# #                             if step_sample > 0:
-# #                                 latent = torch.cat([model_input_1[:,:1,:,:], temp_x0], dim=1)
-# #                             else:
-# #                                 latent = torch.cat([model_input[:,:1,:,:], temp_x0], dim=1)
-
+                        #     noise_pred_cond = transformer(
+                        #             latent_model_input, t=timestep, noise=noise, rand_num_img=rand_num_img, plucker=plucker, plucker_train=True,latent_frame_zero=latent_frame_zero, **arg_c)[0]
+                        #     noise_pred_uncond = transformer(
+                        #             latent_model_input, t=timestep, noise=noise, rand_num_img=rand_num_img, plucker=plucker, plucker_train=False,latent_frame_zero=latent_frame_zero, **arg_null)[0]
+                        #     noise_pred_cond = noise_pred_uncond + 5.0*(noise_pred_cond - noise_pred_uncond)
+                        #     if i+1 == 50:
+                        #         temp_x0 = latent[:,-latent_frame_zero:,:,:] + (0-sampling_sigmas[i])*noise_pred_cond[:,-latent_frame_zero:,:,:]
+                        #     else:
+                        #         #torch.Size([16, 35, 68, 120]) torch.Size([16, 13, 68, 120]) noise_pred_condnoise_pred_cond
+                        #         #print(latent.shape,noise_pred_cond.shape,"noise_pred_condnoise_pred_cond")
+                        #         temp_x0 = latent[:,-latent_frame_zero:,:,:] + (sampling_sigmas[i+1]-sampling_sigmas[i])*noise_pred_cond[:,-latent_frame_zero:,:,:]
+                        #     #print(temp_x0.shape,noise.shape,model_input.shape,(noise[:,:-9,:,:]*sampling_sigmas[i]+(1-sampling_sigmas[i])*model_input[:,:-9,:,:]).shape,"64964346494")
+                        #     index1 = min(49,i+1)
+                        #     if step_sample > 0:
+                        #         latent = torch.cat([noise[:,:-latent_frame_zero,:,:]*sampling_sigmas[index1]+(1-sampling_sigmas[index1])*model_input_1[:,:-latent_frame_zero,:,:], temp_x0], dim=1)
+                        #     else:
+                        #         latent = torch.cat([noise[:,:-latent_frame_zero,:,:]*sampling_sigmas[index1]+(1-sampling_sigmas[index1])*model_input[:,:-latent_frame_zero,:,:], temp_x0], dim=1)
+                
                 end_time = time.time()
                 elapsed = end_time - start_time
                 main_print(
                     f"--> Function running time: {elapsed:.4f} s"
                 )
-
                 
-        
                 global_step = 1
                 if step_sample > 0:
                     model_input = torch.cat([model_input, latent[:,-latent_frame_zero:,:,:]],dim=1)
@@ -1015,25 +838,17 @@ def sample_one(
                     model_input = torch.cat([model_input[:,:-latent_frame_zero,:,:], latent[:,-latent_frame_zero:,:,:]],dim=1)
             
                 with torch.autocast("cuda", dtype=torch.bfloat16):
-                    print(model_input.shape,"j00cfha8h")
-                    print(model_input.shape,"j00cfha8h")
-                    video_cat = scale(vae, model_input[:,-latent_frame_zero:,:,:]) 
+                    video_cat = scale(vae, model_input) 
                     video = video_cat[:,-frame_zero:]
-                    print(video_cat.shape,video.shape,"0h0h08h")
                     video_all.append(video)
-                    
-                    print(model_input_de.shape,"208qh0h09")
+
                     if step_sample > 0:
-                        if video.shape[1] < frame_zero:
-                            video = torch.cat([video[:,0].unsqueeze(1).repeat(1,frame_zero-video.shape[1],1,1),video],dim=1)                            
                         model_input_de = torch.cat([model_input_de, video[:,-frame_zero:,:,:]],dim=1)
                     else:
-                        if video.shape[1] < frame_zero:
-                            video = torch.cat([video[:,0].unsqueeze(1).repeat(1,frame_zero-video.shape[1],1,1),video],dim=1)    
                         model_input_de = torch.cat([model_input_de[:,:-frame_zero,:,:], video[:,-frame_zero:,:,:]],dim=1)
-                            
-                    video = save_video(torch.cat(video_all,dim=1))
 
+                    video = save_video(torch.cat(video_all,dim=1))
+                
                 # Ensure videoid is a string
                 if isinstance(videoid, list):
                     videoid_str = "_".join(map(str, videoid))
@@ -1049,20 +864,25 @@ def sample_one(
                 if step_sample + 1 < sample_num:
                     with torch.no_grad():
                         # Jump to ./wan/image2video.py
-                        img =  model_input#[:,:-latent_frame_zero]
-                        with torch.no_grad():
-                            arg_c, arg_null, noise, mask2, img = wan_i2v.generate(
-                                        caption[step_sample],
-                                        frame_num=frame+32,
-                                        max_area=max_area,
-                                        latent_frame_zero=latent_frame_zero,
-                                        img=img
-                            )
-                            frame+=32
-                            model_input_1 = wan_i2v.vae.encode([model_input_de.to(device)])[0]
-                            print(img[0].shape,model_input_1.shape,"zawdiio0ahd90")
-                            # torch.Size([48, 21, 44, 80]) torch.Size([48, 12, 44, 80]) zawdiio0ahd90
-                        model_input_1=torch.cat([model_input_1,torch.zeros(48, latent_frame_zero, model_input_1.shape[2], model_input_1.shape[3]).to(device)],dim=1)
+                        _, _, arg_c, _, model_input_1, clip_context, arg_null = wan_i2v.generate_next(
+                            model_input_de,
+                            model_input,
+                            device,
+                            caption[step_sample+1],
+                            img,
+                            max_area=544*960,
+                            frame_num=model_input.squeeze().shape[1],
+                            shift=17,
+                            sample_solver="unipc",
+                            sampling_steps=50,
+                            guide_scale=5.0,
+                            seed=None,
+                            rand_num_img=rand_num_img,
+                            offload_model=False,
+                            clip_context=clip_context,
+                            flag_sample=True,
+                        )
+                    model_input_1 = torch.cat([model_input_1,torch.zeros(16,latent_frame_zero,model_input_1.shape[2],model_input_1.shape[3]).to(device)],dim=1)
             
     return
 
@@ -1110,36 +930,26 @@ def main(args):
     noise_random_generator = None
 
     # Create model:
-    cfg = WAN_CONFIGS["ti2v-5B"]
-    ckpt_dir = "/inspire/hdd/global_user/zhangkaipeng-24043/mxf/Wan2.2-TI2V-5B"
+    cfg = WAN_CONFIGS["i2v-14B"]
+    ckpt_dir = "./Yume-I2V-540P"
 
     # Referenced from https://github.com/Wan-Video/Wan2.1/blob/main/wan/image2video.py
-    wan_i2v = wan23.WanTI2V(
+    wan_i2v = wan.Yume(
         config=cfg,
         checkpoint_dir=ckpt_dir,
-        device_id=device,
+        device="cpu",
     )    
-    
+    from wan.modules.model import ConvNext3D,WanAttentionBlock,WanI2VCrossAttention,WanLayerNorm
     transformer = wan_i2v.model
-    transformer.patch_embedding_2x = upsample_conv3d_weights(deepcopy(transformer.patch_embedding),(1,4,4))
-    transformer.patch_embedding_4x = upsample_conv3d_weights(deepcopy(transformer.patch_embedding),(1,8,8))
-    transformer.patch_embedding_8x = upsample_conv3d_weights(deepcopy(transformer.patch_embedding),(1,16,16))
-    transformer.patch_embedding_16x = upsample_conv3d_weights(deepcopy(transformer.patch_embedding),(1,32,32))
-    transformer.patch_embedding_2x_f = torch.nn.Conv3d(48, 48, kernel_size=(1,4,4), stride=(1,4,4))
 
-    transformer_ori = WanModel_ori.from_pretrained(ckpt_dir)
+    # transformer.patch_embedding_2x = upsample_conv3d_weights(deepcopy(transformer.patch_embedding),(1,4,4))
+    # transformer.patch_embedding_4x = upsample_conv3d_weights(deepcopy(transformer.patch_embedding),(1,8,8))
+    # transformer.patch_embedding_8x = upsample_conv3d_weights(deepcopy(transformer.patch_embedding),(1,16,16))
+    # transformer.patch_embedding_16x = upsample_conv3d_weights(deepcopy(transformer.patch_embedding),(1,32,32))
+    # transformer.patch_embedding_2x_f = torch.nn.Conv3d(36, 36, kernel_size=(1,4,4), stride=(1,4,4))
 
-    from wan23.modules.model import WanAttentionBlock
-    transformer.sideblock = WanAttentionBlock(transformer.dim, transformer.ffn_dim, transformer.num_heads, transformer.window_size, \
-                                                  transformer.qk_norm, transformer.cross_attn_norm, transformer.eps)
-    transformer.mask_token = torch.nn.Parameter(
-        torch.zeros(1, 1, transformer.dim, device=transformer.device)
-    )
-    torch.nn.init.normal_(transformer.mask_token, std=.02)
-    transformer.mask_token.requires_grad = True
-
-    transformer = transformer.train().requires_grad_(True)
-
+    # transformer = transformer.to(torch.bfloat16)
+        
     main_print(
         f"  Total Sample parameters = {sum(p.numel() for p in transformer.parameters() if p.requires_grad) / 1e6} M"
     )
@@ -1164,61 +974,13 @@ def main(args):
             args.resume_from_checkpoint,
         )
 
-        
-    from safetensors import safe_open
-    from safetensors.torch import save_file
-
-    # 配置路径
-    MODEL1 = "/inspire/hdd/project/agileapplication/zhangkaipeng-24043/YUME/test_long_1/checkpoint-500/diffusion_pytorch_model.safetensors"
-    MODEL2 = "/inspire/hdd/project/agileapplication/zhangkaipeng-24043/YUME1/outputs_i2v_pack_distil/checkpoint-9950/diffusion_pytorch_model.safetensors"
-    OUTPUT = "/inspire/hdd/project/agileapplication/zhangkaipeng-24043/YUME/merged_model/diffusion_pytorch_model.safetensors"
-
-    # 1. 合并模型权重
-    def merge_models():
-        """合并两个模型的权重并保存"""
-        # 确保输出目录存在
-        os.makedirs(os.path.dirname(OUTPUT), exist_ok=True)
-
-       # 加载模型权重 - 正确使用 safe_open
-        weights1 = {}
-        with safe_open(MODEL1, framework="pt") as f:
-            for key in f.keys():
-                weights1[key] = f.get_tensor(key)
-
-        weights2 = {}
-        with safe_open(MODEL2, framework="pt") as f:
-            for key in f.keys():
-                weights2[key] = f.get_tensor(key)
-
-        # 合并权重
-        merged = {}
-        for key in set(weights1.keys()) & set(weights2.keys()):
-            merged[key] = (weights1[key] + weights2[key]) / 2
-
-        # 保存合并后的模型
-        save_file(merged, OUTPUT)
-        print(f"✅ 模型已合并保存至: {OUTPUT}")
-        return merged
-
-
-    merged_weights = merge_models()
-    transformer.load_state_dict(merged_weights, strict=False)
-    
-    
     transformer = transformer.to(device)
+
     transformer = FSDP(
         transformer,
         **fsdp_kwargs,
         use_orig_params=True,
     )
-
-    transformer_ori = transformer_ori.to(device)
-    transformer_ori = FSDP(
-        transformer_ori,
-        **fsdp_kwargs,
-        use_orig_params=True,
-    )
-
     # Set model as eval.
     transformer.eval().requires_grad_(False)
 
@@ -1229,39 +991,34 @@ def main(args):
     
     main_print(
         f"  T5 CPU: {args.t5_cpu}")
-    
     #init t5, clip and vae
+    wan_i2v.init_model(
+        config=cfg,
+        checkpoint_dir=ckpt_dir,
+        device_id=device,
+        t5_fsdp=False,
+        dit_fsdp=False,
+        use_usp=False,
+        t5_cpu=args.t5_cpu,
+    )
     vae = wan_i2v.vae
 
     dist.barrier()
     
     wan_i2v.device = device
     denoiser = load_denoiser()
-    
-    print(args.jpg_dir,"args.jpg_dirargs.jpg_dirargs.jpg_dir")
+
     if args.jpg_dir != None:
         dataset_ddp, dataset_length = create_scaled_videos(args.jpg_dir, 
                                         total_frames=33, 
-                                        H1=704, 
-                                        W1=1280)
+                                        H1=544, 
+                                        W1=960)
         image_sample = True
     else:
         dataset_ddp, dataset_length = mp4_data(args.video_root_dir)
         image_sample = False
-    #print(image_sample,"image_sampleimage_sample")
-    #zzzz
 
     step_times = deque(maxlen=100)
-    image_sample = True
-    # If you want to load a model using multiple GPUs, please refer to the `Multiple GPUs` section.
-    path = '/inspire/hdd/global_user/zhangkaipeng-24043/mxf/InternVL3-2B-Instruct'
-    camption_model = AutoModel.from_pretrained(
-        path,
-        torch_dtype=torch.bfloat16,
-        low_cpu_mem_usage=True,
-        use_flash_attn=True,
-        trust_remote_code=True).eval().to(device)
-    tokenizer = AutoTokenizer.from_pretrained(path, trust_remote_code=True, use_fast=False)
 
     for step in range(1, (int(dataset_length)//world_size) + 2):
         start_time = time.time()
@@ -1270,7 +1027,6 @@ def main(args):
         gc.collect()
         sample_one(
             transformer,
-            transformer_ori,
             args.not_apply_cfg_solver,
             device,
             dataset_ddp = dataset_ddp,
@@ -1284,9 +1040,7 @@ def main(args):
             rank = rank,
             world_size = world_size,
             image_sample = image_sample,
-            caption_path = args.caption_path,
-            camption_model = camption_model,
-            tokenizer = tokenizer,
+            caption_path = args.caption_path
         )
 
 
@@ -1522,3 +1276,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     main(args)
+
