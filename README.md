@@ -91,7 +91,7 @@ bash scripts/finetune/finetune.sh
 ```
 
 ## 🧱 Dataset Preparation
-Please refer to https://github.com/Lixsp11/sekai-codebase to download the dataset. For the processed data format, refer to `./test_video`.
+`decode_camera_controls_from_c2w_sequence.py` converts camera trajectories into keyboard directional controls. Please refer to https://github.com/Lixsp11/sekai-codebase to download the dataset. For the processed data format, refer to `./test_video`.
 ```
 path_to_processed_dataset_folder/
 ├── Keys_None_Mouse_Down/ 
