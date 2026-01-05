@@ -3,7 +3,7 @@
 </div>
 
 ## 🔥🔥🔥 News!!
-* Dec 26, 2025: 🔥 We have released the [Yume-5B model](https://huggingface.co/stdstu123/Yume-5B-720P). Additionally, we have released the Yume-1.5 paper, which introduces a new interactive world foundation model.
+* Dec 26, 2025: 🔥 We have released the [Yume-5B model](https://huggingface.co/stdstu123/Yume-5B-720P). Additionally, we have released the [Yume-1.5 paper](https://arxiv.org/pdf/2512.22096), which introduces a new interactive world foundation model.
 * July 23, 2025: 🔥 We released Yume-1.0. The first **fully open-source real-world** world model (including data, training/inference code, and weights).
 
 
@@ -119,6 +119,7 @@ In `scripts/finetune/finetune.sh`, `args.root_dir` represents the `path_to_proce
 ## 📑 Development Plan
 - Dataset processing
   - [ ] Providing processed datasets
+  - [√] Provide dataset processing functions
 - Code update
   - [ ] fp8 support
   - [ ] Better distillation methods
