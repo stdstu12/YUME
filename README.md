@@ -9,7 +9,7 @@
 
 # Yume: An Interactive World Generation Model
 
-Yume is a long-term project that aims to create an interactive, realistic, and dynamic world through the input of text, images, or videos.
+Yume is a **long-term project** that aims to create an interactive, realistic, and dynamic world through the input of text, images, or videos.
 
 
 <div align="center">
