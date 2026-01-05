@@ -29,6 +29,7 @@ Yume is a long-term project that aims to create an interactive, realistic, and d
 - [FramePack-Like](https://github.com/lllyasviel/FramePack) training code.
 - Long video generation method with DDP/FSDP sampling support
 - Dataset processing [code](https://github.com/stdstu12/YUME/blob/main/decode_camera_controls_from_c2w_sequence.py) that converts real-world camera trajectories into discrete keyboard controls.
+- Windows One-Click Install & Run
 
 
 ## 🔧 Installation
