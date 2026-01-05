@@ -123,8 +123,8 @@ In `scripts/finetune/finetune.sh`, `args.root_dir` represents the `path_to_proce
   - [ ] fp8 support
   - [ ] Better distillation methods
 - ​​Model Update
-  - [ ] Quantized and Distilled Models
-  - [ ] Models for 720p Resolution Generation​
+  - [√] Quantized and Distilled Models
+  - [√] Models for 720p Resolution Generation​
 
 ## 🤝 Contributing
 We welcome all contributions.
@@ -148,6 +148,12 @@ If you use Yume for your research, please cite our paper:
   title={Yume: An Interactive World Generation Model},
   author={Mao, Xiaofeng and Lin, Shaoheng and Li, Zhen and Li, Chuanhao and Peng, Wenshuo and He, Tong and Pang, Jiangmiao and Chi, Mingmin and Qiao, Yu and Zhang, Kaipeng},
   journal={arXiv preprint arXiv:2507.17744},
+  year={2025}
+}
+@article{mao2025yume,
+  title={Yume-1.5: A Text-Controlled Interactive World Generation Model},
+  author={Mao, Xiaofeng and Li, Zhen and Li, Chuanhao and Xu, Xiaojie and Ying, Kaining and He, Tong and Pang, Jiangmiao and Qiao, Yu and Zhang, Kaipeng},
+  journal={arXiv preprint arXiv:2512.22096},
   year={2025}
 }
 
