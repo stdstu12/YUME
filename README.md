@@ -47,7 +47,7 @@ To facilitate the use and testing of Yume-5B, we provide a one-click solution fo
 This program has been successfully tested on an RTX 4090 Laptop GPU (16GB). We recommend using a GPU with at least 16GB VRAM. Please adjust the sampling steps between 4 and 50 based on your GPU performance. Note that higher steps yield better quality but will result in slower generation speeds.
 
 ## 📹 Demo
-[![Watch the video](demo/cover.png)](demo/demo.mp4)
+[![Watch the video](demo/cover.png)](https://www.youtube.com/watch?v=zhkWctq4N1k)
 
 
 ## 🚀 Inference
