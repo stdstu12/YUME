@@ -158,5 +158,11 @@ If you use Yume for your research, please cite our paper:
   journal={arXiv preprint arXiv:2512.22096},
   year={2025}
 }
-
+@inproceedings{mao2025osv,
+  title={Osv: One step is enough for high-quality image to video generation},
+  author={Mao, Xiaofeng and Jiang, Zhengkai and Wang, Fu-Yun and Zhang, Jiangning and Chen, Hao and Chi, Mingmin and Wang, Yabiao and Luo, Wenhan},
+  booktitle={Proceedings of the Computer Vision and Pattern Recognition Conference},
+  pages={12585--12594},
+  year={2025}
+}
 ```
