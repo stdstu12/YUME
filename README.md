@@ -22,6 +22,8 @@ Yume is a long-term project that aims to create an interactive, realistic, and d
 [![YUME-14B-540P](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model-blue)](https://huggingface.co/stdstu123/Yume-I2V-540P)&nbsp;
 [![YUME-5B-720P](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model-blue)](https://huggingface.co/stdstu123/Yume-5B-720P)&nbsp;
 [![YouTube](https://badges.aleen42.com/src/youtube.svg)](https://www.youtube.com/watch?v=51VII_iJ1EM)&nbsp;
+[![YouTube](https://badges.aleen42.com/src/youtube.svg)](https://www.youtube.com/watch?v=zhkWctq4N1k)&nbsp;
+
 
 </div>
 
