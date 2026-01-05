@@ -24,7 +24,7 @@ Yume is a **long-term project** that aims to create an interactive, realistic, a
 
 </div>
 
-- A distillation recipes for video DiT based on [OSV](https://openaccess.thecvf.com/content/CVPR2025/papers/Mao_OSV_One_Step_is_Enough_for_High-Quality_Image_to_Video_CVPR_2025_paper.pdf).
+- A distillation recipes for video DiT based on [OSV]. (https://openaccess.thecvf.com/content/CVPR2025/papers/Mao_OSV_One_Step_is_Enough_for_High-Quality_Image_to_Video_CVPR_2025_paper.pdf). A Masked Video Diffusion Transformer training method.
 - [FramePack-Like](https://github.com/lllyasviel/FramePack) training code.
 - Long video generation method with DDP/FSDP sampling support
 - Dataset processing [code](https://github.com/stdstu12/YUME/blob/main/decode_camera_controls_from_c2w_sequence.py) that converts real-world camera trajectories into discrete keyboard controls.
