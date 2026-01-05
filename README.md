@@ -4,7 +4,7 @@
 
 ## 🔥🔥🔥 News!!
 * Dec 26, 2025: 🔥 We have released the [Yume-5B model](https://huggingface.co/stdstu123/Yume-5B-720P). Additionally, we have released the [Yume-1.5 paper](https://arxiv.org/pdf/2512.22096), which introduces a new interactive world foundation model.
-* July 23, 2025: 🔥 We released Yume-1.0. The first **fully open-source real-world** world model (including data, training/inference code, and weights).
+* July 23, 2025: 🔥 We released [Yume-1.0](https://arxiv.org/abs/2507.17744). The first **fully open-source real-world** world model (including data, training/inference code, and weights).
 
 
 # Yume: An Interactive World Generation Model
