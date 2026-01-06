@@ -205,6 +205,71 @@ class Transport:
         return xt[:,-9:,:,:], t, model_output, terms
 
 
+    def training_losses_i2v_pack(self, model, x1, arg_c=None, timestep=None, n_tokens=None, training_cache=False,
+                        i2v_mode=False, cond_latents=None, args=None, rand_num_img=None, enable_mask=False, x0=None, latent_frame_zero=8,x0_init=None,t=None,mask2=None,img=None,step=None):
+        x1 = x1.unsqueeze(0)
+        self.shift = self.video_shift
+        if arg_c == None:
+            arg_c = {}
+
+        if x0 == None and t == None: 
+            t, x0, x1 = self.sample(x1, n_tokens)
+
+        if x0_init != None:
+            print("x0_init")
+            x0 = x0_init
+
+        if timestep is not None:
+            t = th.ones_like(t) * timestep
+
+        t, xt, ut = self.path_sampler.plan(t, x0, x1)
+        input_t = self.get_model_t(t)
+
+        xt = xt.squeeze()
+        ut = ut.squeeze()
+        t_ori = t
+        
+        c1,f1,h1,w1 = xt.shape
+        with torch.autocast("cuda", dtype=torch.bfloat16):
+            temp_ts = (mask2[0][0][:-latent_frame_zero, ::2, ::2] ).flatten()
+            print(temp_ts.mean(), temp_ts,"temp_tstemp_tstemp_tstemp_ts111111111")
+            
+            if True:
+                temp_ts = torch.cat([
+                                temp_ts,
+                                temp_ts.new_ones(arg_c['seq_len'] - temp_ts.size(0)) * t
+                            ])
+
+                
+            t = temp_ts.unsqueeze(0)
+            
+            xt = (1. - mask2[0]) * img + mask2[0] * xt
+            model_output = model([xt], t=t*1000, latent_frame_zero=latent_frame_zero, enable_mask=enable_mask, **arg_c)[0]
+
+        model_output = model_output[:,-latent_frame_zero:]
+        ut = ut[:,-latent_frame_zero:]
+        terms = {}
+        if self.model_type == ModelType.VELOCITY:
+            terms["loss"] = mean_flat(((model_output - ut) ** 2))
+        else:
+            _, drift_var = self.path_sampler.compute_drift(xt, t)
+            sigma_t, _ = self.path_sampler.compute_sigma_t(path.expand_t_like_x(t, xt))
+            if self.loss_type in [WeightType.VELOCITY]:
+                weight = (drift_var / sigma_t) ** 2
+            elif self.loss_type in [WeightType.LIKELIHOOD]:
+                weight = drift_var / (sigma_t ** 2)
+            elif self.loss_type in [WeightType.NONE]:
+                weight = 1
+            else:
+                raise NotImplementedError()
+
+            if self.model_type == ModelType.NOISE:
+                terms['loss'] = mean_flat(weight * ((model_output - x0) ** 2))
+            else:
+                terms['loss'] = mean_flat(weight * ((model_output * sigma_t + x0) ** 2))
+
+        return xt, t_ori, model_output, terms['loss'], x0, t_ori
+    
     def get_drift(self):
         """member function for obtaining the drift of the probability flow ODE"""
 
