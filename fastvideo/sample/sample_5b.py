@@ -700,7 +700,7 @@ def create_scaled_videos(folder_path, total_frames=33, H1=256, W1=256):
     video_list = []
     cnt = 0 
      
-    random.shuffle(image_files)
+    #random.shuffle(image_files)
     for img_file in image_files:
         cnt+=1
         print(cnt)
@@ -747,7 +747,7 @@ def create_scaled_videos(folder_path, total_frames=33, H1=256, W1=256):
             
         except Exception as e:
             print(f"Error {img_path}: {e}")
-    random.shuffle(video_list)
+    #random.shuffle(video_list)
     return video_list, len(video_list)
 
 def sample_one(
