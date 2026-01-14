@@ -50,7 +50,7 @@ This program has been successfully tested on an RTX 4090 Laptop GPU (16GB). We r
 
 
 ## 🚀 Inference
-
+We used 'InternVL-2B-Instruct' for refining prompt descriptions, as we found it may improve event generation capabilities. Alternatively, you can use other LLMs. If you don't need it, feel free to remove it.
 ### ODE
 For image-to-video generation, we use `--jpg_dir="./jpg"` to specify the input image directory and `--caption_path="./caption.txt"` to provide text conditioning inputs, where each line corresponds to a generation instance controlling 2-second video output.
 ```bash
@@ -81,7 +81,7 @@ Note that these parameters (Actual distance, Angular change rate, and View rotat
 We perform sampling using the 5B model. First, download the weights from Hugging Face and place them in the current directory under `./Yume-5B-720p`. `args.T2V` controls whether the model operates in text-to-video mode, and `args.prompt` specifies the input caption.
 ```bash
 # Download the model weights and place them in Path_To_Yume.
-bash scripts/inference/sample_tts.sh 
+bash scripts/inference/sample_5b.sh 
 ```
 
 ## 🎯 Training & Distill 
