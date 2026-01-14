@@ -966,9 +966,9 @@ def main(args):
     initialize_sequence_parallel_state(args.sp_size)
 
     # If passed along, set the training seed now. On GPU...
-    if args.seed is not None:
-        # TODO: t within the same seq parallel group should be the same. Noise should be different.
-        set_seed(args.seed + rank)
+    # if args.seed is not None:
+    #     # TODO: t within the same seq parallel group should be the same. Noise should be different.
+    #     set_seed(args.seed + rank)
     # We use different seeds for the noise generation in each process to ensure that the noise is different in a batch.
     noise_random_generator = None
 
