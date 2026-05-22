@@ -1,5 +1,6 @@
 # Copyright 2024-2025 The Alibaba Wan Team Authors. All rights reserved.
 import gc
+import json
 import logging
 import math
 import os
@@ -153,9 +154,16 @@ class Yume:
             torch.zeros(1, 1, self.model.dim, device=self.model.device)
         )
 
-        self.model = WanModel.from_pretrained(checkpoint_dir)
-        state_dict = load_file(checkpoint_dir+"/diffusion_pytorch_model.safetensors")
-        self.model.load_state_dict(state_dict)
+        # Use load_file (mmap, low RAM) instead of from_pretrained (reads full file into RAM).
+        # strict=False: sideblock/mask_token/patch_embedding_* are YUME-only additions not
+        # present in the base checkpoint; they stay freshly initialized (same as original flow).
+        # Load directly to the target device to avoid holding two copies in RAM.
+        # load_file with device= loads each tensor directly to CUDA, skipping the
+        # intermediate CPU buffer that causes OOM on machines with limited RAM.
+        from safetensors.torch import load_file as _load_file
+        _ckpt = os.path.join(checkpoint_dir, "diffusion_pytorch_model.safetensors")
+        state_dict = _load_file(_ckpt, device=str(self.device))
+        self.model.load_state_dict(state_dict, strict=False)
 
 
         self.sp_size = 1

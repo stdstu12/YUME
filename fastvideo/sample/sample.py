@@ -912,7 +912,8 @@ def main(args):
     local_rank = int(os.environ["LOCAL_RANK"])
     rank = int(os.environ["RANK"])
     world_size = int(os.environ["WORLD_SIZE"])
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    backend = "gloo" if os.name == "nt" else "nccl"
+    dist.init_process_group(backend, rank=rank, world_size=world_size)
 
     # Set independent cache directories for each rank
     os.environ["TRITON_CACHE_DIR"] = f"/tmp/triton_cache_{rank}"

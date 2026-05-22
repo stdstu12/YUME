@@ -1,1 +1,16 @@
 *.mp4
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+InternVL3-2B-Instruct/
+Yume-5B-720P/
+_vbench_caption.txt
+_vbench_tmp/
+outputs/
+requirements-cog.txt
+temp_caption_3th person.txt
+temp_caption_bus.txt
+temp_caption_default.txt
+temp_caption_gc.txt
+temp_caption_kitchen.txt

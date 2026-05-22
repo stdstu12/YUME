@@ -25,22 +25,9 @@ def fp16_clamp(x):
 
 
 def init_weights(m):
-    if isinstance(m, T5LayerNorm):
-        nn.init.ones_(m.weight)
-    elif isinstance(m, T5Model):
-        nn.init.normal_(m.token_embedding.weight, std=1.0)
-    elif isinstance(m, T5FeedForward):
-        nn.init.normal_(m.gate[0].weight, std=m.dim**-0.5)
-        nn.init.normal_(m.fc1.weight, std=m.dim**-0.5)
-        nn.init.normal_(m.fc2.weight, std=m.dim_ffn**-0.5)
-    elif isinstance(m, T5Attention):
-        nn.init.normal_(m.q.weight, std=(m.dim * m.dim_attn)**-0.5)
-        nn.init.normal_(m.k.weight, std=m.dim**-0.5)
-        nn.init.normal_(m.v.weight, std=m.dim**-0.5)
-        nn.init.normal_(m.o.weight, std=(m.num_heads * m.dim_attn)**-0.5)
-    elif isinstance(m, T5RelativeEmbedding):
-        nn.init.normal_(
-            m.embedding.weight, std=(2 * m.num_buckets * m.num_heads)**-0.5)
+    # Skipped: weights are overwritten by checkpoint load immediately after
+    # model construction. Running init on UMT5-XXL wastes ~10s per subprocess.
+    pass
 
 
 class GELU(nn.Module):

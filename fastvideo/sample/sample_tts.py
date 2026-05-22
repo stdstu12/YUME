@@ -902,6 +902,7 @@ def sample_one(
                                         video_output_dir,
                                         videoid_str+"_"+str(caption_ori)+"_"+str(step_sample)+"_"+str(repeat_num)+".mp4",
                                     )
+                print(filename)
                 export_to_video(video[0] , filename, fps=16)
 
                 if step_sample + 1 < sample_num:

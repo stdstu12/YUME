@@ -3,6 +3,7 @@
 # DATA_DIR=./data
 # IP=[MASTER NODE IP]
 export TOKENIZERS_PARALLELISM=false
+export USE_LIBUV=0
 
 torchrun --nproc_per_node 2 --master_port 29717 \
     fastvideo/sample/sample_5b.py \
